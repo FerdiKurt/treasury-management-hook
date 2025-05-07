@@ -58,4 +58,31 @@ contract TreasuryManagementHook is BaseHook {
         emit TreasuryFeeRateChanged(oldRate, _newFeeRate);
     }
 
+    /// @notice Returns the hook's permissions
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+        Hooks.Permissions memory permissions;
+        permissions.beforeInitialize = false;
+        permissions.afterInitialize = true;
+        permissions.beforeAddLiquidity = false;
+        permissions.afterAddLiquidity = false;
+        permissions.beforeRemoveLiquidity = false;
+        permissions.afterRemoveLiquidity = false;
+        permissions.beforeSwap = true;
+        permissions.afterSwap = true;
+        permissions.beforeDonate = false;
+        permissions.afterDonate = false;
+        return permissions;
+    }
+
+    /// @notice Register a pool with this hook after initialization
+    function _afterInitialize(address, PoolKey calldata key, uint160, int24)
+        internal
+        override
+        returns (bytes4)
+    {
+        bytes32 poolId = keccak256(abi.encode(key));
+        isPoolManaged[poolId] = true;
+        return IHooks.afterInitialize.selector;
+    }
+
 }
