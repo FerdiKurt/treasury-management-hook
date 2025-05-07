@@ -25,4 +25,13 @@ contract TreasuryManagementHook is BaseHook {
     event TreasuryFeeCollected(PoolKey key, address token, uint256 amount);
     event TreasuryAddressChanged(address oldTreasury, address newTreasury);
     event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
+
+    constructor(IPoolManager _poolManager, address _treasury, uint24 _treasuryFeeRate) BaseHook(_poolManager) {
+        require(_treasury != address(0), "Invalid treasury address");
+        require(_treasuryFeeRate <= 1000, "Fee rate too high"); // Max 10%
+        
+        treasury = _treasury;
+        treasuryFeeRate = _treasuryFeeRate;
+    }
+
 }
