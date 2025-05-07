@@ -34,4 +34,28 @@ contract TreasuryManagementHook is BaseHook {
         treasuryFeeRate = _treasuryFeeRate;
     }
 
+    /// @notice Updates the treasury address
+    /// @param _newTreasury The new treasury address
+    function setTreasury(address _newTreasury) external {
+        require(msg.sender == treasury, "Only treasury can update");
+        require(_newTreasury != address(0), "Invalid treasury address");
+        
+        address oldTreasury = treasury;
+        treasury = _newTreasury;
+        
+        emit TreasuryAddressChanged(oldTreasury, _newTreasury);
+    }
+
+    /// @notice Updates the treasury fee rate
+    /// @param _newFeeRate The new fee rate in basis points
+    function setTreasuryFeeRate(uint24 _newFeeRate) external {
+        require(msg.sender == treasury, "Only treasury can update");
+        require(_newFeeRate <= 1000, "Fee rate too high"); // Max 10%
+        
+        uint24 oldRate = treasuryFeeRate;
+        treasuryFeeRate = _newFeeRate;
+        
+        emit TreasuryFeeRateChanged(oldRate, _newFeeRate);
+    }
+
 }
