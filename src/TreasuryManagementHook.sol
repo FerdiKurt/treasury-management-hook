@@ -157,4 +157,13 @@ contract TreasuryManagementHook is BaseHook {
         return (IHooks.afterSwap.selector, feeAmount);
     }
 
+    /// @notice Withdraw collected fees to treasury
+    /// @param token The token to withdraw
+    /// @param amount The amount to withdraw
+    function withdrawFees(Currency token, uint256 amount) external {
+        require(msg.sender == treasury, "Only treasury can withdraw");
+        
+        // Transfer the specified amount to the treasury
+        poolManager.take(token, treasury, amount);
+    }
 }
