@@ -7,7 +7,16 @@ import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 
-
+// Simplified interface for testing
+interface IPoolManager {
+    struct SwapParams {
+        bool zeroForOne;
+        int256 amountSpecified;
+        uint160 sqrtPriceLimitX96;
+    }
+    
+    function take(Currency currency, address to, uint256 amount) external;
+}
 
 // Simple mock token
 contract MockToken {
@@ -33,6 +42,19 @@ contract MockToken {
     
     function balanceOf(address account) external view returns (uint256) {
         return _balances[account];
+    }
+}
+
+// Mock Pool Manager
+contract MockPoolManager is IPoolManager {
+    Currency public lastTakeToken;
+    address public lastTakeAccount;
+    uint256 public lastTakeAmount;
+    
+    function take(Currency currency, address to, uint256 amount) external override {
+        lastTakeToken = currency;
+        lastTakeAccount = to;
+        lastTakeAmount = amount;
     }
 }
 
