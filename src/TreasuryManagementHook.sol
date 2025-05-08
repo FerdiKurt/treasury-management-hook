@@ -116,4 +116,45 @@ contract TreasuryManagementHook is BaseHook {
         return (IHooks.beforeSwap.selector, zeroSwapDelta, treasuryFeeRate);
     }
 
+    /// @notice Collect fees after swap
+    function _afterSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata params,
+        BalanceDelta delta,
+        bytes calldata
+    ) internal override returns (bytes4, int128) {
+        bytes32 poolId = keccak256(abi.encode(key));
+        
+        // Only collect fee if pool is managed by this hook
+        if (!isPoolManaged[poolId]) {
+            return (IHooks.afterSwap.selector, 0);
+        }
+        
+        // Calculate fee amount based on the swap
+        int128 feeAmount = 0;
+        Currency token;
+        
+        if (params.zeroForOne) {
+            // If swapping token0 for token1, fee is on token0
+            if (delta.amount0() > 0) {
+                feeAmount = (delta.amount0() * int128(int24(treasuryFeeRate))) / 10000;
+                token = key.currency0;
+            }
+        } else {
+            // If swapping token1 for token0, fee is on token1
+            if (delta.amount1() > 0) {
+                feeAmount = (delta.amount1() * int128(int24(treasuryFeeRate))) / 10000;
+                token = key.currency1;
+            }
+        }
+        
+        // If fee amount is positive, emit event
+        if (feeAmount > 0) {
+            emit TreasuryFeeCollected(key, Currency.unwrap(token), uint256(uint128(feeAmount)));
+        }
+        
+        return (IHooks.afterSwap.selector, feeAmount);
+    }
+
 }
