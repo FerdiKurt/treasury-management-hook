@@ -85,4 +85,35 @@ contract TreasuryManagementHook is BaseHook {
         return IHooks.afterInitialize.selector;
     }
 
+    /// @notice Implement beforeSwap to match the BaseHook signature
+    function beforeSwap(
+        address sender,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata params,
+        bytes calldata hookData
+    ) external override view onlyPoolManager returns (bytes4, BeforeSwapDelta, uint24) {
+        return _beforeSwap(sender, key, params, hookData);
+    }
+
+    /// @notice Internal implementation of beforeSwap
+    function _beforeSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata,
+        bytes calldata
+    ) internal override view returns (bytes4, BeforeSwapDelta, uint24) {
+        bytes32 poolId = keccak256(abi.encode(key));
+        
+        // Only apply fee if pool is managed by this hook
+        if (!isPoolManaged[poolId]) {
+            // Create a zero BeforeSwapDelta using default initialization
+            BeforeSwapDelta _zeroSwapDelta; // Default initialization sets all values to 0
+            return (IHooks.beforeSwap.selector, _zeroSwapDelta, 0);
+        }
+        
+        // Return additional fee to be charged - zero delta, non-zero fee
+        BeforeSwapDelta zeroSwapDelta; // Default initialization sets all values to 0
+        return (IHooks.beforeSwap.selector, zeroSwapDelta, treasuryFeeRate);
+    }
+
 }
