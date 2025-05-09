@@ -58,3 +58,94 @@ contract MockPoolManager is IPoolManager {
     }
 }
 
+// Simplified version of TreasuryManagementHook for testing
+contract TreasuryManagement {
+    IPoolManager public immutable poolManager;
+    address public treasury;
+    uint24 public treasuryFeeRate;
+    
+    // Mapping to track managed pools
+    mapping(bytes32 => bool) public isPoolManaged;
+
+    event TreasuryFeeCollected(bytes32 poolId, address token, uint256 amount);
+    event TreasuryAddressChanged(address oldTreasury, address newTreasury);
+    event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
+
+    constructor(IPoolManager _poolManager, address _treasury, uint24 _treasuryFeeRate) {
+        require(_treasury != address(0), "Invalid treasury address");
+        require(_treasuryFeeRate <= 1000, "Fee rate too high"); // Max 10%
+        
+        poolManager = _poolManager;
+        treasury = _treasury;
+        treasuryFeeRate = _treasuryFeeRate;
+    }
+
+    function setTreasury(address _newTreasury) external {
+        require(msg.sender == treasury, "Only treasury can update");
+        require(_newTreasury != address(0), "Invalid treasury address");
+        
+        address oldTreasury = treasury;
+        treasury = _newTreasury;
+        
+        emit TreasuryAddressChanged(oldTreasury, _newTreasury);
+    }
+
+    function setTreasuryFeeRate(uint24 _newFeeRate) external {
+        require(msg.sender == treasury, "Only treasury can update");
+        require(_newFeeRate <= 1000, "Fee rate too high"); // Max 10%
+        
+        uint24 oldRate = treasuryFeeRate;
+        treasuryFeeRate = _newFeeRate;
+        
+        emit TreasuryFeeRateChanged(oldRate, _newFeeRate);
+    }
+    
+    // For testing: manually add a pool to the managed pools
+    function addManagedPool(bytes32 poolId) external {
+        isPoolManaged[poolId] = true;
+    }
+    
+    // Simulate the beforeSwap hook logic
+    function calculateFee(bytes32 poolId) external view returns (uint24) {
+        if (isPoolManaged[poolId]) {
+            return treasuryFeeRate;
+        }
+        return 0;
+    }
+    
+    // Simulate the afterSwap hook logic for token0 -> token1 swap
+    function collectFeeToken0(bytes32 poolId, int128 amount0) external returns (int128) {
+        if (!isPoolManaged[poolId] || amount0 <= 0) {
+            return 0;
+        }
+        
+        int128 feeAmount = (amount0 * int128(int24(treasuryFeeRate))) / 10000;
+        
+        if (feeAmount > 0) {
+            emit TreasuryFeeCollected(poolId, address(0), uint256(uint128(feeAmount)));
+        }
+        
+        return feeAmount;
+    }
+    
+    // Simulate the afterSwap hook logic for token1 -> token0 swap
+    function collectFeeToken1(bytes32 poolId, int128 amount1) external returns (int128) {
+        if (!isPoolManaged[poolId] || amount1 <= 0) {
+            return 0;
+        }
+        
+        int128 feeAmount = (amount1 * int128(int24(treasuryFeeRate))) / 10000;
+        
+        if (feeAmount > 0) {
+            emit TreasuryFeeCollected(poolId, address(0), uint256(uint128(feeAmount)));
+        }
+        
+        return feeAmount;
+    }
+    
+    function withdrawFees(Currency currency, uint256 amount) external {
+        require(msg.sender == treasury, "Only treasury can withdraw");
+        poolManager.take(currency, treasury, amount);
+    }
+}
+
