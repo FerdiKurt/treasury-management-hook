@@ -187,3 +187,19 @@ contract TreasuryManagementTest is Test {
         treasuryManagement.addManagedPool(poolId);
     }
     
+    function test_Constructor() public view {
+        assertEq(address(treasuryManagement.poolManager()), address(poolManager), "Pool manager address incorrect");
+        assertEq(treasuryManagement.treasury(), treasury, "Treasury address incorrect");
+        assertEq(treasuryManagement.treasuryFeeRate(), treasuryFeeRate, "Treasury fee rate incorrect");
+    }
+    
+    function test_RevertIf_InvalidTreasuryInConstructor() public {
+        vm.expectRevert("Invalid treasury address");
+        new TreasuryManagement(poolManager, address(0), treasuryFeeRate);
+    }
+    
+    function test_RevertIf_FeeRateTooHighInConstructor() public {
+        vm.expectRevert("Fee rate too high");
+        new TreasuryManagement(poolManager, treasury, 1001); // Over 10%
+    }
+    
