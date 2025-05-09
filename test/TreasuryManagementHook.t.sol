@@ -149,3 +149,41 @@ contract TreasuryManagement {
     }
 }
 
+contract TreasuryManagementTest is Test {
+    MockPoolManager public poolManager;
+    TreasuryManagement public treasuryManagement;
+    MockToken public token0;
+    MockToken public token1;
+    
+    // Test accounts
+    address public treasury = address(0x1);
+    address public user = address(0x2);
+    address public newTreasury = address(0x3);
+    
+    // Test parameters
+    uint24 public treasuryFeeRate = 50; // 0.5%
+    uint24 public newFeeRate = 100; // 1%
+    
+    // Test pool ID
+    bytes32 public poolId = keccak256("test-pool");
+    
+    function setUp() public {
+        // Deploy mock contracts
+        poolManager = new MockPoolManager();
+        token0 = new MockToken("Token0", "TKN0");
+        token1 = new MockToken("Token1", "TKN1");
+        
+        // Deploy treasury management
+        treasuryManagement = new TreasuryManagement(
+            poolManager, 
+            treasury, 
+            treasuryFeeRate
+        );
+        
+        // Make sure treasury has some ETH for testing
+        vm.deal(treasury, 10 ether);
+        
+        // Register the test pool as managed
+        treasuryManagement.addManagedPool(poolId);
+    }
+    
