@@ -260,3 +260,38 @@ contract TreasuryManagementTest is Test {
         assertEq(fee, 0, "Fee rate should be zero for unmanaged pool");
     }
     
+    function test_CollectFeeToken0() public {
+        int128 amount0 = 1000;
+        int128 expectedFee = (amount0 * int128(int24(treasuryFeeRate))) / 10000;
+        
+        int128 actualFee = treasuryManagement.collectFeeToken0(poolId, amount0);
+        assertEq(actualFee, expectedFee, "Fee amount incorrect");
+    }
+    
+    function test_CollectFeeToken1() public {
+        int128 amount1 = 1000;
+        int128 expectedFee = (amount1 * int128(int24(treasuryFeeRate))) / 10000;
+        
+        int128 actualFee = treasuryManagement.collectFeeToken1(poolId, amount1);
+        assertEq(actualFee, expectedFee, "Fee amount incorrect");
+    }
+    
+    function test_CollectFeeToken0_NegativeAmount() public {
+        int128 amount0 = -1000;
+        int128 actualFee = treasuryManagement.collectFeeToken0(poolId, amount0);
+        assertEq(actualFee, 0, "Fee should be zero for negative amount");
+    }
+    
+    function test_CollectFeeToken1_NegativeAmount() public {
+        int128 amount1 = -1000;
+        int128 actualFee = treasuryManagement.collectFeeToken1(poolId, amount1);
+        assertEq(actualFee, 0, "Fee should be zero for negative amount");
+    }
+    
+    function test_CollectFeeToken0_UnmanagedPool() public {
+        bytes32 unmanagedPoolId = keccak256("unmanaged-pool");
+        int128 amount0 = 1000;
+        int128 actualFee = treasuryManagement.collectFeeToken0(unmanagedPoolId, amount0);
+        assertEq(actualFee, 0, "Fee should be zero for unmanaged pool");
+    }
+    
