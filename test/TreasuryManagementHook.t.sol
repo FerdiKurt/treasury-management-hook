@@ -295,3 +295,24 @@ contract TreasuryManagementTest is Test {
         assertEq(actualFee, 0, "Fee should be zero for unmanaged pool");
     }
     
+    function test_WithdrawFees() public {
+        Currency currency = Currency.wrap(address(token0));
+        uint256 amount = 1000;
+        
+        // Call withdrawFees as treasury
+        vm.prank(treasury);
+        treasuryManagement.withdrawFees(currency, amount);
+        
+        // Verify correct parameters were passed to take
+        assertEq(Currency.unwrap(poolManager.lastTakeToken()), address(token0), "Take token incorrect");
+        assertEq(poolManager.lastTakeAccount(), treasury, "Take account incorrect");
+        assertEq(poolManager.lastTakeAmount(), amount, "Take amount incorrect");
+    }
+    
+    function test_RevertIf_WithdrawFeesNotTreasury() public {
+        // Call withdrawFees as non-treasury
+        vm.prank(user);
+        vm.expectRevert("Only treasury can withdraw");
+        treasuryManagement.withdrawFees(Currency.wrap(address(token0)), 1000);
+    }
+}
