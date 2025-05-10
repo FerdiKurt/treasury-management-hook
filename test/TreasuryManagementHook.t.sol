@@ -248,3 +248,15 @@ contract TreasuryManagementTest is Test {
         vm.expectRevert("Fee rate too high");
         treasuryManagement.setTreasuryFeeRate(1001); // Over 10%
     }
+    
+    function test_CalculateFee_ManagedPool() public view {
+        uint24 fee = treasuryManagement.calculateFee(poolId);
+        assertEq(fee, treasuryFeeRate, "Fee rate not applied for managed pool");
+    }
+    
+    function test_CalculateFee_UnmanagedPool() public view {
+        bytes32 unmanagedPoolId = keccak256("unmanaged-pool");
+        uint24 fee = treasuryManagement.calculateFee(unmanagedPoolId);
+        assertEq(fee, 0, "Fee rate should be zero for unmanaged pool");
+    }
+    
