@@ -203,3 +203,48 @@ contract TreasuryManagementTest is Test {
         new TreasuryManagement(poolManager, treasury, 1001); // Over 10%
     }
     
+    function test_SetTreasury() public {
+        // Call with treasury address
+        vm.prank(treasury);
+        treasuryManagement.setTreasury(newTreasury);
+        
+        // Verify treasury was updated
+        assertEq(treasuryManagement.treasury(), newTreasury, "Treasury address not updated");
+    }
+    
+    function test_RevertIf_SetTreasuryNotTreasury() public {
+        // Call with non-treasury address
+        vm.prank(user);
+        vm.expectRevert("Only treasury can update");
+        treasuryManagement.setTreasury(newTreasury);
+    }
+    
+    function test_RevertIf_SetTreasuryZeroAddress() public {
+        // Call with zero address
+        vm.prank(treasury);
+        vm.expectRevert("Invalid treasury address");
+        treasuryManagement.setTreasury(address(0));
+    }
+    
+    function test_SetTreasuryFeeRate() public {
+        // Call with treasury address
+        vm.prank(treasury);
+        treasuryManagement.setTreasuryFeeRate(newFeeRate);
+        
+        // Verify fee rate was updated
+        assertEq(treasuryManagement.treasuryFeeRate(), newFeeRate, "Treasury fee rate not updated");
+    }
+    
+    function test_RevertIf_SetTreasuryFeeRateNotTreasury() public {
+        // Call with non-treasury address
+        vm.prank(user);
+        vm.expectRevert("Only treasury can update");
+        treasuryManagement.setTreasuryFeeRate(newFeeRate);
+    }
+    
+    function test_RevertIf_SetTreasuryFeeRateTooHigh() public {
+        // Call with too high fee rate
+        vm.prank(treasury);
+        vm.expectRevert("Fee rate too high");
+        treasuryManagement.setTreasuryFeeRate(1001); // Over 10%
+    }
