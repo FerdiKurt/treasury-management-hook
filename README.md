@@ -26,3 +26,45 @@ The Treasury Management Hook extends Uniswap V4 pools with the ability to:
 
 ## Smart Contract Details
 
+### Constructor Parameters
+```solidity
+constructor(
+    IPoolManager _poolManager,    // Uniswap V4 Pool Manager address
+    address _treasury,            // Initial treasury address
+    uint24 _treasuryFeeRate       // Initial fee rate in basis points
+)
+```
+
+### Key Functions
+
+#### Administrative Functions
+```solidity
+// Update treasury address (only callable by current treasury)
+function setTreasury(address _newTreasury) external
+
+// Update fee rate (only callable by treasury)
+function setTreasuryFeeRate(uint24 _newFeeRate) external
+
+// Withdraw collected fees (only callable by treasury)
+function withdrawFees(Currency token, uint256 amount) external
+```
+
+#### Hook Implementations
+```solidity
+// Called when a pool is initialized
+function _afterInitialize(...) internal override
+
+// Called before a swap occurs
+function beforeSwap(...) external override view
+
+// Called after a swap occurs
+function _afterSwap(...) internal override
+```
+
+### Events
+```solidity
+event TreasuryFeeCollected(PoolKey key, address token, uint256 amount);
+event TreasuryAddressChanged(address oldTreasury, address newTreasury);
+event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
+```
+
