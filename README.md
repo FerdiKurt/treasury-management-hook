@@ -1,66 +1,28 @@
-## Foundry
+# Treasury Management Hook for Uniswap V4
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A custom hook for Uniswap V4 that implements treasury management features, enabling pools to collect protocol fees and automatically distribute them to a designated treasury address.
 
-Foundry consists of:
+## Overview
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+The Treasury Management Hook extends Uniswap V4 pools with the ability to:
+- Collect additional fees on token swaps (beyond standard pool swap fees)
+- Send collected fees directly to a designated treasury address
+- Support configurable fee rates with a maximum cap of 10%
+- Enable treasury management (change treasury address and fee rates)
+- Track which pools are managed by the hook
 
-## Documentation
+## Features
 
-https://book.getfoundry.sh/
+### Core Functionality
+- **Custom Fee Collection**: Charges additional fees on swaps (configurable in basis points)
+- **Automatic Treasury Distribution**: Fees are automatically sent to the treasury address
+- **Pool Management**: Track which pools use this hook
+- **Fee Withdrawal**: Treasury can withdraw accumulated fees
 
-## Usage
+### Administrative Functions
+- **Update Treasury Address**: Change where fees are sent
+- **Update Fee Rate**: Modify the fee percentage (maximum 10%)
+- **Access Control**: Only the treasury address can update settings
 
-### Build
+## Smart Contract Details
 
-```shell
-$ forge build
-```
-
-### Test
-
-```shell
-$ forge test
-```
-
-### Format
-
-```shell
-$ forge fmt
-```
-
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
