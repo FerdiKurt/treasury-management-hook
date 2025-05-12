@@ -111,3 +111,24 @@ Example:
 - Swap: 1000 USDC → ETH
 - Treasury fee: 5 USDC (0.5% of 1000)
 
+## Security Considerations
+
+### Access Control
+- Only the treasury address can update treasury settings
+- Only the treasury address can withdraw fees
+- Maximum fee rate is capped at 10% (1000 basis points)
+
+### Pool Management
+- Pools are automatically registered when initialized with this hook
+- Unregistered pools won't have fees collected
+
+### Fee Collection
+- Fees are calculated based on the actual swap amounts
+- Zero fees are not emitted as events
+- Fees are stored in the pool manager and withdrawn explicitly
+
+## Gas Considerations
+
+- Additional gas cost for each swap due to custom fee calculation
+- Minimal storage usage with bitpacked pool tracking
+
