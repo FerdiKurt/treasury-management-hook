@@ -132,3 +132,31 @@ Example:
 - Additional gas cost for each swap due to custom fee calculation
 - Minimal storage usage with bitpacked pool tracking
 
+## Integration Examples
+
+### With Protocols
+```solidity
+// Example: Integration with a DeFi protocol
+contract ProtocolTreasury {
+    TreasuryManagementHook public treasuryHook;
+    
+    function collectProtocolFees() external {
+        // Collect fees for all managed tokens
+        treasuryHook.withdrawFees(Currency.wrap(USDC), usdcBalance);
+        treasuryHook.withdrawFees(Currency.wrap(WETH), wethBalance);
+    }
+}
+```
+
+### With DAOs
+```solidity
+// Example: DAO governance integration
+contract DAOTreasury {
+    TreasuryManagementHook public treasuryHook;
+    
+    function updateFeeRate(uint24 newRate) external onlyGovernance {
+        treasuryHook.setTreasuryFeeRate(newRate);
+    }
+}
+```
+
