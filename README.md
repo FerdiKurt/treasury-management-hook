@@ -160,3 +160,19 @@ contract DAOTreasury {
 }
 ```
 
+## Deployment Information
+
+### Required Dependencies
+- Uniswap V4 Core (`@uniswap/v4-core`)
+- Uniswap V4 Periphery (`@uniswap/v4-periphery`)
+- Solidity ^0.8.0
+
+### Network Deployment
+1. Deploy the hook contract
+2. Set up treasury address
+3. Configure initial fee rate
+4. Create pools using the hook
+
+### Verification
+After deployment, verify the contract on Etherscan or similar block explorers using the constructor parameters.
+
