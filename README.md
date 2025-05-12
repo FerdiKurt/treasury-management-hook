@@ -68,3 +68,46 @@ event TreasuryAddressChanged(address oldTreasury, address newTreasury);
 event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
 ```
 
+## Usage
+
+### 1. Deploy the Hook
+```solidity
+TreasuryManagementHook hook = new TreasuryManagementHook(
+    poolManager,              // Uniswap V4 Pool Manager
+    treasuryAddress,          // Your treasury address
+    50                        // 0.5% fee rate (50 basis points)
+);
+```
+
+### 2. Create a Pool with the Hook
+```solidity
+PoolKey memory poolKey = PoolKey({
+    currency0: Currency.wrap(address(token0)),
+    currency1: Currency.wrap(address(token1)),
+    fee: 3000,                // 0.3% standard pool fee
+    tickSpacing: 60,
+    hooks: IHooks(address(hook))
+});
+
+poolManager.initialize(poolKey, startingPrice);
+```
+
+### 3. Collect Fees
+Fees are automatically collected on each swap. The treasury can withdraw accumulated fees using:
+```solidity
+hook.withdrawFees(Currency.wrap(address(token)), amount);
+```
+
+## Fee Calculation
+
+Fees are calculated as a percentage of the input token in a swap:
+
+- For token0 → token1 swaps: Fee is charged on token0
+- For token1 → token0 swaps: Fee is charged on token1
+- Fee rate is specified in basis points (100 basis points = 1%)
+
+Example:
+- Fee rate: 50 basis points (0.5%)
+- Swap: 1000 USDC → ETH
+- Treasury fee: 5 USDC (0.5% of 1000)
+
