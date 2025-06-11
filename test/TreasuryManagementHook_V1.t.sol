@@ -200,3 +200,61 @@ contract TreasuryHookTest is Test {
     event TreasuryAddressChanged(address indexed oldTreasury, address indexed newTreasury);
     event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
     event FeesWithdrawn(Currency indexed token, uint256 amount);
+
+    function setUp() public {
+        // Create test addresses
+        treasury = makeAddr("treasury");
+        user = makeAddr("user");
+        unauthorized = makeAddr("unauthorized");
+        newTreasury = makeAddr("newTreasury");
+        
+        // Deploy mock pool manager
+        mockPoolManager = new MockPoolManager();
+        
+        // Deploy test tokens
+        token0 = new MockToken("Token0", "TK0", 18);
+        token1 = new MockToken("Token1", "TK1", 18);
+        
+        // Ensure token0 < token1 for proper ordering
+        if (address(token0) > address(token1)) {
+            (token0, token1) = (token1, token0);
+        }
+        
+        // Deploy hook
+        hook = new TreasuryManagementHook_V1(
+            IPoolManager(address(mockPoolManager)),
+            treasury,
+            INITIAL_FEE_RATE
+        );
+        
+        // Create pool key
+        poolKey = PoolKey({
+            currency0: Currency.wrap(address(token0)),
+            currency1: Currency.wrap(address(token1)),
+            fee: 3000,
+            tickSpacing: 60,
+            hooks: IHooks(address(hook))
+        });
+        poolId = poolKey.toId();
+        
+        // Set pool as managed
+        hook.setPoolManaged(poolKey, true);
+        
+        // Setup initial token balances
+        token0.mint(user, 1000 ether);
+        token1.mint(user, 1000 ether);
+        token0.mint(address(this), 1000 ether);
+        token1.mint(address(this), 1000 ether);
+        
+        // Add liquidity to mock pool
+        token0.mint(address(mockPoolManager), 10000 ether);
+        token1.mint(address(mockPoolManager), 10000 ether);
+        mockPoolManager.addPoolLiquidity(Currency.wrap(address(token0)), 10000 ether);
+        mockPoolManager.addPoolLiquidity(Currency.wrap(address(token1)), 10000 ether);
+
+        vm.startPrank(address(mockPoolManager));
+        token0.approveMax(address(mockPoolManager));
+        token1.approveMax(address(mockPoolManager));
+        vm.stopPrank();
+    }
+
