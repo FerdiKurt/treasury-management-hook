@@ -358,3 +358,25 @@ contract TreasuryHookTest is Test {
         
         assertEq(hook.treasuryFeeRate(), 0);
     }
+
+    // ============ HOOK PERMISSIONS TESTS ============
+    
+    function test_GetHookPermissions() public view {
+        Hooks.Permissions memory permissions = hook.getHookPermissions();
+        
+        assertFalse(permissions.beforeInitialize);
+        assertTrue(permissions.afterInitialize);
+        assertFalse(permissions.beforeAddLiquidity);
+        assertFalse(permissions.afterAddLiquidity);
+        assertFalse(permissions.beforeRemoveLiquidity);
+        assertFalse(permissions.afterRemoveLiquidity);
+        assertTrue(permissions.beforeSwap);
+        assertTrue(permissions.afterSwap);
+        assertFalse(permissions.beforeDonate);
+        assertFalse(permissions.afterDonate);
+        assertFalse(permissions.beforeSwapReturnDelta);
+        assertFalse(permissions.afterSwapReturnDelta);
+        assertFalse(permissions.afterAddLiquidityReturnDelta);
+        assertFalse(permissions.afterRemoveLiquidityReturnDelta);
+    }
+
