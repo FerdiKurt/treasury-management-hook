@@ -154,3 +154,40 @@ contract TreasuryManagementHook_V1 is BaseHook {
         return (IHooks.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
     }
 
+    /**
+     * @notice Hook called after a swap is executed to collect fees
+     * @param key The pool key for the swap
+     * @param params The swap parameters
+     * @param delta The balance changes from the swap
+     */
+    function _afterSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata params,
+        BalanceDelta delta,
+        bytes calldata
+    ) internal override returns (bytes4, int128) {
+        PoolId poolId = key.toId();
+        
+        if (!isPoolManaged[poolId] || treasuryFeeRate == 0) {
+            return (IHooks.afterSwap.selector, 0);
+        }
+        
+        (Currency tokenIn, uint256 amountIn) = _getSwapInputDetails(key, params, delta);
+        
+        if (amountIn > 0) {
+            uint256 feeAmount = (amountIn * treasuryFeeRate) / BASIS_POINTS;
+            
+            if (feeAmount > 0) {
+                accumulatedFees[tokenIn] += feeAmount;
+                poolManager.take(tokenIn, address(this), feeAmount);
+                
+                emit TreasuryFeeCollected(poolId, tokenIn, feeAmount);
+                
+                return (IHooks.afterSwap.selector, int128(int256(feeAmount)));
+            }
+        }
+        
+        return (IHooks.afterSwap.selector, 0);
+    }
+
