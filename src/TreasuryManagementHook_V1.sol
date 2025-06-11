@@ -118,3 +118,18 @@ contract TreasuryManagementHook_V1 is BaseHook {
         });
     }
 
+    /**
+     * @notice Hook called after a pool is initialized
+     * @param key The pool key containing pool parameters
+     */
+    function _afterInitialize(
+        address,
+        PoolKey calldata key,
+        uint160,
+        int24
+    ) internal override returns (bytes4) {
+        PoolId poolId = key.toId();
+        isPoolManaged[poolId] = true;
+        return IHooks.afterInitialize.selector;
+    }
+
