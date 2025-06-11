@@ -101,3 +101,44 @@ library TestUtils {
         return ((amountIn - amountOut) * TestConstants.BASIS_POINTS) / amountIn;
     }
 }
+
+contract MockPoolManager {
+    mapping(Currency => mapping(address => uint256)) public balances;
+    mapping(Currency => uint256) public poolBalances;
+    
+    // Track total takes for debugging
+    mapping(Currency => uint256) public totalTakes;
+    
+    event Take(Currency indexed currency, address indexed to, uint256 amount);
+    
+    function take(Currency currency, address to, uint256 amount) external {
+        // Just do accounting, no validation
+        balances[currency][to] += amount;
+        totalTakes[currency] += amount;
+        emit Take(currency, to, amount);
+    }
+    
+    function settle(Currency currency, address from, uint256 amount) external {
+        // Safe settle that doesn't underflow
+        if (balances[currency][from] >= amount) {
+            balances[currency][from] -= amount;
+        }
+        poolBalances[currency] += amount;
+    }
+    
+    function addPoolLiquidity(Currency currency, uint256 amount) external {
+        poolBalances[currency] += amount;
+    }
+    
+    function getBalance(Currency currency, address account) external view returns (uint256) {
+        return balances[currency][account];
+    }
+    
+    function getPoolBalance(Currency currency) external view returns (uint256) {
+        return poolBalances[currency];
+    }
+    
+    function getTotalTakes(Currency currency) external view returns (uint256) {
+        return totalTakes[currency];
+    }
+}
