@@ -284,3 +284,38 @@ contract TreasuryHookTest is Test {
             MAX_FEE_RATE + 1
         );
     }
+
+    // ============ TREASURY MANAGEMENT TESTS ============
+    
+    function test_SetTreasury_Success() public {
+        vm.expectEmit(true, true, false, false);
+        emit TreasuryAddressChanged(treasury, newTreasury);
+        
+        vm.prank(treasury);
+        hook.setTreasury(newTreasury);
+        
+        assertEq(hook.treasury(), newTreasury);
+    }
+
+    function test_SetTreasury_OnlyTreasury() public {
+        vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+        vm.prank(unauthorized);
+        hook.setTreasury(newTreasury);
+    }
+
+    function test_SetTreasury_InvalidAddress() public {
+        vm.expectRevert(TreasuryManagementHook_V1.InvalidTreasuryAddress.selector);
+        vm.prank(treasury);
+        hook.setTreasury(address(0));
+    }
+
+    function test_SetTreasury_SameAddress() public {
+        vm.expectEmit(true, true, false, false);
+        emit TreasuryAddressChanged(treasury, treasury);
+        
+        vm.prank(treasury);
+        hook.setTreasury(treasury);
+        
+        assertEq(hook.treasury(), treasury);
+    }
+
