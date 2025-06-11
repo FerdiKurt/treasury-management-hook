@@ -133,3 +133,24 @@ contract TreasuryManagementHook_V1 is BaseHook {
         return IHooks.afterInitialize.selector;
     }
 
+    /**
+     * @notice Hook called before a swap is executed
+     * @param key The pool key for the swap
+     */
+    function _beforeSwap(
+        address,
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata,
+        bytes calldata
+    ) internal view override returns (bytes4, BeforeSwapDelta, uint24) {
+        PoolId poolId = key.toId();
+        
+        // For unmanaged pools, return zero selector to skip afterSwap processing
+        if (!isPoolManaged[poolId]) {
+            return (bytes4(0), BeforeSwapDelta.wrap(0), 0);
+        }
+        
+        // For managed pools, continue to afterSwap hook
+        return (IHooks.beforeSwap.selector, BeforeSwapDelta.wrap(0), 0);
+    }
+
