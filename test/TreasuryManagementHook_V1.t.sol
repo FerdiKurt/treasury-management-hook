@@ -258,3 +258,29 @@ contract TreasuryHookTest is Test {
         vm.stopPrank();
     }
 
+    // ============ CONSTRUCTOR TESTS ============
+    
+    function test_Constructor_Success() public view {
+        assertEq(hook.treasury(), treasury);
+        assertEq(hook.treasuryFeeRate(), INITIAL_FEE_RATE);
+        assertEq(hook.MAX_FEE_RATE(), MAX_FEE_RATE);
+        assertEq(hook.BASIS_POINTS(), BASIS_POINTS);
+    }
+
+    function test_Constructor_InvalidTreasury() public {
+        vm.expectRevert(TreasuryManagementHook_V1.InvalidTreasuryAddress.selector);
+        new TreasuryManagementHook_V1(
+            IPoolManager(address(mockPoolManager)),
+            address(0),
+            INITIAL_FEE_RATE
+        );
+    }
+
+    function test_Constructor_FeeRateTooHigh() public {
+        vm.expectRevert(TreasuryManagementHook_V1.FeeRateTooHigh.selector);
+        new TreasuryManagementHook_V1(
+            IPoolManager(address(mockPoolManager)),
+            treasury,
+            MAX_FEE_RATE + 1
+        );
+    }
