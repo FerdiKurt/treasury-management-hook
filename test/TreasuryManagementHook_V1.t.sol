@@ -142,3 +142,33 @@ contract MockPoolManager {
         return totalTakes[currency];
     }
 }
+
+contract MockToken is ERC20 {
+    uint8 private _decimals;
+    
+    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20(name, symbol) {
+        _decimals = decimals_;
+    }
+    
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
+    
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+    
+    function burn(address from, uint256 amount) external {
+        _burn(from, amount);
+    }
+    
+    // Allow unlimited approval for testing
+    function approve(address spender, uint256 amount) public override returns (bool) {
+        return super.approve(spender, amount);
+    }
+    
+    // Helper function for testing
+    function approveMax(address spender) external {
+        _approve(msg.sender, spender, type(uint256).max);
+    }
+}
