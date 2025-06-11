@@ -232,3 +232,19 @@ contract TreasuryManagementHook_V1 is BaseHook {
         emit FeesWithdrawn(token, withdrawAmount);
     }
 
+    /**
+     * @notice Returns the amount of fees available for withdrawal
+     * @param token The token to check
+     */
+    function getAvailableFees(Currency token) external view returns (uint256) {
+        return accumulatedFees[token];
+    }
+
+    /**
+     * @notice Checks if a pool is managed by this hook
+     * @param key The pool key to check
+     */
+    function getPoolManagedStatus(PoolKey calldata key) external view returns (bool) {
+        return isPoolManaged[key.toId()];
+    }
+
