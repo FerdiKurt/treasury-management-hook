@@ -248,3 +248,12 @@ contract TreasuryManagementHook_V1 is BaseHook {
         return isPoolManaged[key.toId()];
     }
 
+    /**
+     * @notice Manually sets the managed status of a pool (testing only)
+     * @param key The pool key
+     * @param managed Whether the pool should be managed
+     */
+    function setPoolManaged(PoolKey calldata key, bool managed) external {
+        isPoolManaged[key.toId()] = managed;
+    }
+}
