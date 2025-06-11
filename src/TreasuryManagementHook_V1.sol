@@ -191,3 +191,23 @@ contract TreasuryManagementHook_V1 is BaseHook {
         return (IHooks.afterSwap.selector, 0);
     }
 
+    /**
+     * @notice Determines the input token and amount from swap parameters
+     * @param key The pool key
+     * @param params The swap parameters
+     * @param delta The balance changes
+     */
+    function _getSwapInputDetails(
+        PoolKey calldata key,
+        IPoolManager.SwapParams calldata params,
+        BalanceDelta delta
+    ) private pure returns (Currency tokenIn, uint256 amountIn) {
+        if (params.zeroForOne) {
+            tokenIn = key.currency0;
+            amountIn = delta.amount0() < 0 ? uint256(uint128(-delta.amount0())) : 0;
+        } else {
+            tokenIn = key.currency1;
+            amountIn = delta.amount1() < 0 ? uint256(uint128(-delta.amount1())) : 0;
+        }
+    }
+
