@@ -211,3 +211,24 @@ contract TreasuryManagementHook_V1 is BaseHook {
         }
     }
 
+    /**
+     * @notice Withdraws accumulated fees to the treasury
+     * @param token The token to withdraw fees for
+     * @param amount The amount to withdraw (0 = withdraw all)
+     */
+    function withdrawFees(Currency token, uint256 amount) external {
+        if (msg.sender != treasury) revert OnlyTreasuryAllowed();
+        
+        uint256 availableFees = accumulatedFees[token];
+        if (availableFees == 0) revert InsufficientFees();
+        
+        uint256 withdrawAmount = amount == 0 ? availableFees : amount;
+        
+        if (withdrawAmount > availableFees) revert InsufficientFees();
+        
+        accumulatedFees[token] -= withdrawAmount;
+        poolManager.take(token, treasury, withdrawAmount);
+        
+        emit FeesWithdrawn(token, withdrawAmount);
+    }
+
