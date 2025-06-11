@@ -70,3 +70,31 @@ contract TreasuryManagementHook_V1 is BaseHook {
         // Skip validation in tests
     }
 
+    /**
+     * @notice Updates the treasury address
+     * @param _newTreasury The new treasury address
+     */
+    function setTreasury(address _newTreasury) external {
+        if (msg.sender != treasury) revert OnlyTreasuryAllowed();
+        if (_newTreasury == address(0)) revert InvalidTreasuryAddress();
+        
+        address oldTreasury = treasury;
+        treasury = _newTreasury;
+        
+        emit TreasuryAddressChanged(oldTreasury, _newTreasury);
+    }
+
+    /**
+     * @notice Updates the treasury fee rate
+     * @param _newFeeRate The new fee rate in basis points (0-1000)
+     */
+    function setTreasuryFeeRate(uint24 _newFeeRate) external {
+        if (msg.sender != treasury) revert OnlyTreasuryAllowed();
+        if (_newFeeRate > MAX_FEE_RATE) revert FeeRateTooHigh();
+        
+        uint24 oldRate = treasuryFeeRate;
+        treasuryFeeRate = _newFeeRate;
+        
+        emit TreasuryFeeRateChanged(oldRate, _newFeeRate);
+    }
+
