@@ -36,3 +36,14 @@ contract TreasuryManagementHook_V1 is BaseHook {
     
     /// @notice Accumulated fees per token available for withdrawal
     mapping(Currency => uint256) public accumulatedFees;
+
+    event TreasuryFeeCollected(PoolId indexed poolId, Currency indexed token, uint256 amount);
+    event TreasuryAddressChanged(address indexed oldTreasury, address indexed newTreasury);
+    event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
+    event FeesWithdrawn(Currency indexed token, uint256 amount);
+
+    error InvalidTreasuryAddress();
+    error FeeRateTooHigh();
+    error OnlyTreasuryAllowed();
+    error InsufficientFees();
+
