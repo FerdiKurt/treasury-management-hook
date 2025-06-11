@@ -47,3 +47,21 @@ contract TreasuryManagementHook_V1 is BaseHook {
     error OnlyTreasuryAllowed();
     error InsufficientFees();
 
+    /**
+     * @notice Constructor to initialize the hook
+     * @param _poolManager The Uniswap V4 Pool Manager contract
+     * @param _treasury The initial treasury address
+     * @param _treasuryFeeRate The initial fee rate in basis points
+     */
+    constructor(
+        IPoolManager _poolManager, 
+        address _treasury, 
+        uint24 _treasuryFeeRate
+    ) BaseHook(_poolManager) {
+        if (_treasury == address(0)) revert InvalidTreasuryAddress();
+        if (_treasuryFeeRate > MAX_FEE_RATE) revert FeeRateTooHigh();
+        
+        treasury = _treasury;
+        treasuryFeeRate = _treasuryFeeRate;
+    }
+
