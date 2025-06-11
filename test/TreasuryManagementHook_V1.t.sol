@@ -319,3 +319,42 @@ contract TreasuryHookTest is Test {
         assertEq(hook.treasury(), treasury);
     }
 
+    // ============ FEE RATE MANAGEMENT TESTS ============
+    
+    function test_SetTreasuryFeeRate_Success() public {
+        uint24 newFeeRate = 200; // 2%
+        
+        vm.expectEmit(false, false, false, true);
+        emit TreasuryFeeRateChanged(INITIAL_FEE_RATE, newFeeRate);
+        
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(newFeeRate);
+        
+        assertEq(hook.treasuryFeeRate(), newFeeRate);
+    }
+
+    function test_SetTreasuryFeeRate_OnlyTreasury() public {
+        vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+        vm.prank(unauthorized);
+        hook.setTreasuryFeeRate(200);
+    }
+
+    function test_SetTreasuryFeeRate_TooHigh() public {
+        vm.expectRevert(TreasuryManagementHook_V1.FeeRateTooHigh.selector);
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(MAX_FEE_RATE + 1);
+    }
+
+    function test_SetTreasuryFeeRate_MaxAllowed() public {
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(MAX_FEE_RATE);
+        
+        assertEq(hook.treasuryFeeRate(), MAX_FEE_RATE);
+    }
+
+    function test_SetTreasuryFeeRate_Zero() public {
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(0);
+        
+        assertEq(hook.treasuryFeeRate(), 0);
+    }
