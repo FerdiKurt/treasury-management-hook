@@ -14,3 +14,90 @@ import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {TreasuryManagementHook_V1} from "../src/TreasuryManagementHook_V1.sol";
 
+/// @title Test Constants
+/// @notice Constants used across Treasury Hook tests
+library TestConstants {
+    // Price constants (sqrt prices in Q96 format)
+    uint160 public constant SQRT_PRICE_1_1 = 79228162514264337593543950336;
+    uint160 public constant SQRT_PRICE_1_2 = 56022770974786139918731938227;
+    uint160 public constant SQRT_PRICE_2_1 = 158456325028528675187087900672;
+    uint160 public constant SQRT_PRICE_1_4 = 39614081257132168796771975168;
+    uint160 public constant SQRT_PRICE_4_1 = 316912650057057350374175801344;
+    
+    // Fee tier constants
+    uint24 public constant FEE_LOW = 500;      // 0.05%
+    uint24 public constant FEE_MEDIUM = 3000;  // 0.3%
+    uint24 public constant FEE_HIGH = 10000;   // 1%
+    
+    // Tick spacing constants
+    int24 public constant TICK_SPACING_LOW = 10;
+    int24 public constant TICK_SPACING_MEDIUM = 60;
+    int24 public constant TICK_SPACING_HIGH = 200;
+    
+    // Treasury fee constants
+    uint24 public constant MIN_FEE_RATE = 1;     // 0.01%
+    uint24 public constant DEFAULT_FEE_RATE = 100; // 1%
+    uint24 public constant MAX_FEE_RATE = 1000;  // 10%
+    uint24 public constant BASIS_POINTS = 10000;
+    
+    // Test amounts
+    uint256 public constant SMALL_AMOUNT = 1e12;      // 0.000001 tokens
+    uint256 public constant MEDIUM_AMOUNT = 1e18;     // 1 token
+    uint256 public constant LARGE_AMOUNT = 1000e18;   // 1000 tokens
+    uint256 public constant HUGE_AMOUNT = 1000000e18; // 1M tokens
+    
+    // Liquidity amounts
+    uint128 public constant MIN_LIQUIDITY = 1000;
+    uint128 public constant DEFAULT_LIQUIDITY = 1000e18;
+    uint128 public constant MAX_LIQUIDITY = type(uint128).max / 2;
+}
+
+/// @title Test Utilities
+/// @notice Utility functions for Treasury Hook testing
+library TestUtils {
+    /// @notice Calculate expected fee for a given amount and rate
+    function calculateExpectedFee(uint256 amount, uint24 feeRate) internal pure returns (uint256) {
+        return (amount * feeRate) / TestConstants.BASIS_POINTS;
+    }
+    
+    /// @notice Create a pool key with standard parameters
+    function createPoolKey(
+        Currency currency0,
+        Currency currency1,
+        uint24 fee,
+        int24 tickSpacing,
+        address hookAddress
+    ) internal pure returns (PoolKey memory) {
+        return PoolKey({
+            currency0: currency0,
+            currency1: currency1,
+            fee: fee,
+            tickSpacing: tickSpacing,
+            hooks: IHooks(hookAddress)
+        });
+    }
+    
+    /// @notice Sort two currencies to ensure currency0 < currency1
+    function sortCurrencies(Currency currencyA, Currency currencyB) 
+        internal 
+        pure 
+        returns (Currency currency0, Currency currency1) 
+    {
+        if (Currency.unwrap(currencyA) < Currency.unwrap(currencyB)) {
+            return (currencyA, currencyB);
+        } else {
+            return (currencyB, currencyA);
+        }
+    }
+    
+    /// @notice Check if an amount is dust (too small to generate fees)
+    function isDustAmount(uint256 amount, uint24 feeRate) internal pure returns (bool) {
+        return calculateExpectedFee(amount, feeRate) == 0;
+    }
+    
+    /// @notice Calculate slippage for a swap
+    function calculateSlippage(uint256 amountIn, uint256 amountOut) internal pure returns (uint256) {
+        if (amountIn == 0) return 0;
+        return ((amountIn - amountOut) * TestConstants.BASIS_POINTS) / amountIn;
+    }
+}
