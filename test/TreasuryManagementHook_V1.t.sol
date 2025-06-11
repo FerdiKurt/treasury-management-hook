@@ -172,3 +172,31 @@ contract MockToken is ERC20 {
         _approve(msg.sender, spender, type(uint256).max);
     }
 }
+
+contract TreasuryHookTest is Test {
+    using PoolIdLibrary for PoolKey;
+    using CurrencyLibrary for Currency;
+
+    TreasuryManagementHook_V1 public hook;
+    MockPoolManager public mockPoolManager;
+    
+    MockToken public token0;
+    MockToken public token1;
+    
+    PoolKey public poolKey;
+    PoolId public poolId;
+    
+    address public treasury;
+    address public user;
+    address public unauthorized;
+    address public newTreasury;
+    
+    uint24 public constant INITIAL_FEE_RATE = 100; // 1%
+    uint24 public constant MAX_FEE_RATE = 1000; // 10%
+    uint24 public constant BASIS_POINTS = 10000;
+    
+    // Events for testing
+    event TreasuryFeeCollected(PoolId indexed poolId, Currency indexed token, uint256 amount);
+    event TreasuryAddressChanged(address indexed oldTreasury, address indexed newTreasury);
+    event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
+    event FeesWithdrawn(Currency indexed token, uint256 amount);
