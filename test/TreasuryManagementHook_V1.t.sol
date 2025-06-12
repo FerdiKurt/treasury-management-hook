@@ -1118,6 +1118,125 @@ contract TreasuryHookTest is Test {
     }
 }
 
+/// @title Advanced Treasury Hook Test Scenarios
+/// @notice Complex test scenarios and edge cases for Treasury Management Hook
+contract AdvancedTreasuryHookTest is TreasuryHookTest {
+    using TestUtils for *;
+
+    // ============ INTEGRATION TESTS ============
+    
+    function test_AdvancedIntegration_MultiPoolScenario() public {
+        // Create multiple pools with different fee tiers
+        PoolKey memory lowFeePool = TestUtils.createPoolKey(
+            poolKey.currency0,
+            poolKey.currency1,
+            TestConstants.FEE_LOW,
+            TestConstants.TICK_SPACING_LOW,
+            address(hook)
+        );
+        
+        PoolKey memory highFeePool = TestUtils.createPoolKey(
+            poolKey.currency0,
+            poolKey.currency1,
+            TestConstants.FEE_HIGH,
+            TestConstants.TICK_SPACING_HIGH,
+            address(hook)
+        );
+        
+        // Register pools
+        hook.setPoolManaged(lowFeePool, true);
+        hook.setPoolManaged(highFeePool, true);
+        
+        uint256 swapAmount = TestConstants.MEDIUM_AMOUNT;
+        
+        // Perform swaps on each pool
+        _performSwapOnPool(swapAmount, true, lowFeePool);
+        _performSwapOnPool(swapAmount, true, highFeePool);
+        _performSwapOnPool(swapAmount, true, poolKey); // Original pool
+        
+        // All swaps should collect the same fee (treasury fee, not pool fee)
+        uint256 expectedFee = TestUtils.calculateExpectedFee(swapAmount, INITIAL_FEE_RATE);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee * 3);
+    }
+
+    function test_AdvancedIntegration_TreasuryRotation() public {
+        address treasury1 = makeAddr("treasury1");
+        address treasury2 = makeAddr("treasury2");
+        address treasury3 = makeAddr("treasury3");
+        
+        uint256 swapAmount = TestConstants.MEDIUM_AMOUNT;
+        uint256 expectedFee = TestUtils.calculateExpectedFee(swapAmount, INITIAL_FEE_RATE);
+        
+        // Phase 1: Original treasury
+        _performSwap(swapAmount, true);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+        
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency0, expectedFee);
+        
+        // Phase 2: Switch to treasury1
+        vm.prank(treasury);
+        hook.setTreasury(treasury1);
+        
+        _performSwap(swapAmount, true);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+        
+        vm.prank(treasury1);
+        hook.withdrawFees(poolKey.currency0, expectedFee);
+        
+        // Phase 3: Switch to treasury2
+        vm.prank(treasury1);
+        hook.setTreasury(treasury2);
+        
+        _performSwap(swapAmount, true);
+        
+        // Phase 4: Switch to treasury3 without withdrawing
+        vm.prank(treasury2);
+        hook.setTreasury(treasury3);
+        
+        // treasury3 can withdraw fees collected under treasury2
+        vm.prank(treasury3);
+        hook.withdrawFees(poolKey.currency0, expectedFee);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+    }
+
+    function test_AdvancedIntegration_FeeRateEvolution() public {
+        uint24[] memory feeRateProgression = new uint24[](5);
+        feeRateProgression[0] = 50;   // 0.5%
+        feeRateProgression[1] = 100;  // 1%
+        feeRateProgression[2] = 200;  // 2%
+        feeRateProgression[3] = 500;  // 5%
+        feeRateProgression[4] = 1000; // 10%
+        
+        uint256 swapAmount = TestConstants.MEDIUM_AMOUNT;
+        uint256 totalExpectedFees = 0;
+        
+        for (uint256 i = 0; i < feeRateProgression.length; i++) {
+            // Update fee rate
+            vm.prank(treasury);
+            hook.setTreasuryFeeRate(feeRateProgression[i]);
+            
+            // Perform swap
+            _performSwap(swapAmount, true);
+            
+            // Calculate expected fee for this rate
+            uint256 expectedFee = TestUtils.calculateExpectedFee(swapAmount, feeRateProgression[i]);
+            totalExpectedFees += expectedFee;
+            
+            // Verify accumulated fees
+            assertEq(hook.getAvailableFees(poolKey.currency0), totalExpectedFees);
+        }
+        
+        // Final withdrawal
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency0, 0); // Withdraw all
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+        assertEq(mockPoolManager.getBalance(poolKey.currency0, treasury), totalExpectedFees);
+    }
+
+
     // ============ HELPER FUNCTIONS ============
     
     function _performSwapOnPool(uint256 swapAmount, bool zeroForOne, PoolKey memory targetPool) internal {
