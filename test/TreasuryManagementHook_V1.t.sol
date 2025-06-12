@@ -418,3 +418,53 @@ contract TreasuryHookTest is Test {
         hook.setPoolManaged(newPoolKey, false);
         assertFalse(hook.getPoolManagedStatus(newPoolKey));
     }
+
+    // ============ BEFORE SWAP TESTS ============
+    
+    function test_BeforeSwap_ManagedPool() public {
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -1 ether,
+            sqrtPriceLimitX96: 79228162514264337593543950336 // SQRT_PRICE_1_2
+        });
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, BeforeSwapDelta delta, uint24 fee) = hook.beforeSwap(
+            user,
+            poolKey,
+            params,
+            ""
+        );
+        
+        assertEq(selector, IHooks.beforeSwap.selector);
+        assertEq(BeforeSwapDelta.unwrap(delta), 0);
+        assertEq(fee, 0);
+    }
+
+    function test_BeforeSwap_UnmanagedPool() public {
+        PoolKey memory unmanagedPoolKey = PoolKey({
+            currency0: Currency.wrap(address(token0)),
+            currency1: Currency.wrap(address(token1)),
+            fee: 5000,
+            tickSpacing: 60,
+            hooks: IHooks(address(hook))
+        });
+        
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -1 ether,
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, BeforeSwapDelta delta, uint24 fee) = hook.beforeSwap(
+            user,
+            unmanagedPoolKey,
+            params,
+            ""
+        );
+        
+        assertEq(selector, bytes4(0));
+        assertEq(BeforeSwapDelta.unwrap(delta), 0);
+        assertEq(fee, 0);
+    }
