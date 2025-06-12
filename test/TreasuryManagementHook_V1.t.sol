@@ -1036,6 +1036,55 @@ contract TreasuryHookTest is Test {
         assertLt(gasUsed, 60000, "Gas usage too high for withdrawFees");
     }
 
+    // ============ STRESS TESTS ============
+
+    function test_StressTest_ManyFeeRateChanges() public {
+        uint24[] memory feeRates = new uint24[](10);
+        feeRates[0] = 50;
+        feeRates[1] = 100;
+        feeRates[2] = 150;
+        feeRates[3] = 200;
+        feeRates[4] = 250;
+        feeRates[5] = 300;
+        feeRates[6] = 500;
+        feeRates[7] = 750;
+        feeRates[8] = 1000;
+        feeRates[9] = 0;
+        
+        for (uint256 i = 0; i < feeRates.length; i++) {
+            vm.prank(treasury);
+            hook.setTreasuryFeeRate(feeRates[i]);
+            
+            // Verify fee rate was set
+            uint24 actualRate = hook.treasuryFeeRate();
+            require(actualRate == feeRates[i], "Fee rate not set correctly");
+            
+            // Perform swap
+            _performSwap(1 ether, true);
+        }
+    }
+
+
+    function test_StressTest_LargeAmounts() public {
+        // Test with very large amounts
+        uint256[] memory amounts = new uint256[](5);
+        amounts[0] = 1000 ether;
+        amounts[1] = 10000 ether;
+        amounts[2] = 100000 ether;
+        amounts[3] = 1000000 ether;
+        amounts[4] = type(uint128).max / 10000; // Max safe amount
+        
+        for (uint256 i = 0; i < amounts.length; i++) {
+            uint256 expectedFee = (amounts[i] * INITIAL_FEE_RATE) / BASIS_POINTS;
+            uint256 feesBefore = hook.getAvailableFees(poolKey.currency0);
+            
+            _performSwap(amounts[i], true);
+            
+            uint256 feesAfter = hook.getAvailableFees(poolKey.currency0);
+            assertEq(feesAfter - feesBefore, expectedFee);
+        }
+    }
+
 
     // ============ HELPER FUNCTIONS ============
     
