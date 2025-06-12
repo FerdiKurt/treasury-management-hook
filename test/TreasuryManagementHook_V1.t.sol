@@ -1236,6 +1236,55 @@ contract AdvancedTreasuryHookTest is TreasuryHookTest {
         assertEq(mockPoolManager.getBalance(poolKey.currency0, treasury), totalExpectedFees);
     }
 
+    // ============ PERFORMANCE AND SCALABILITY TESTS ============
+    
+    function test_Performance_HighFrequencyTrading() public {
+        uint256 numTrades = 1000;
+        uint256 tradeAmount = 0.01 ether; // Small trades
+        uint256 expectedFeePerTrade = TestUtils.calculateExpectedFee(tradeAmount, INITIAL_FEE_RATE);
+        
+        uint256 gasStart = gasleft();
+        
+        for (uint256 i = 0; i < numTrades; i++) {
+            _performSwap(tradeAmount, i % 2 == 0); // Alternate directions
+        }
+        
+        uint256 gasUsed = gasStart - gasleft();
+        uint256 avgGasPerTrade = gasUsed / numTrades;
+        
+        // Verify fee collection
+        uint256 totalFeesToken0 = expectedFeePerTrade * (numTrades / 2 + numTrades % 2);
+        uint256 totalFeesToken1 = expectedFeePerTrade * (numTrades / 2);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), totalFeesToken0);
+        assertEq(hook.getAvailableFees(poolKey.currency1), totalFeesToken1);
+        
+        // Performance assertion
+        assertLt(avgGasPerTrade, 150000, "Gas per trade too high");
+    }
+
+    function test_Performance_MassiveSwapAmounts() public {
+        uint256[] memory massiveAmounts = new uint256[](3);
+        massiveAmounts[0] = 1000000 ether;  // 1M tokens
+        massiveAmounts[1] = 10000000 ether; // 10M tokens
+        massiveAmounts[2] = type(uint128).max / TestConstants.BASIS_POINTS; // Max safe amount
+        
+        for (uint256 i = 0; i < massiveAmounts.length; i++) {
+            uint256 amount = massiveAmounts[i];
+            uint256 expectedFee = TestUtils.calculateExpectedFee(amount, INITIAL_FEE_RATE);
+            uint256 feesBefore = hook.getAvailableFees(poolKey.currency0);
+            
+            uint256 gasStart = gasleft();
+            _performSwap(amount, true);
+            uint256 gasUsed = gasStart - gasleft();
+            
+            uint256 feesAfter = hook.getAvailableFees(poolKey.currency0);
+            
+            assertEq(feesAfter - feesBefore, expectedFee);
+            assertLt(gasUsed, 200000, "Gas usage too high for massive swap");
+        }
+    }
+
 
     // ============ HELPER FUNCTIONS ============
     
