@@ -784,3 +784,86 @@ contract TreasuryHookTest is Test {
         assertEq(hook.getAvailableFees(token), totalFees - withdrawAmount);
     }
 
+    // ============ INTEGRATION TESTS ============
+    
+    function test_IntegrationFlow() public {
+        // 1. Perform swap and collect fees
+        uint256 swapAmount = 2 ether;
+        uint256 expectedFee = (swapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        _performSwap(swapAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+        
+        // 2. Change fee rate
+        uint24 newFeeRate = 200; // 2%
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(newFeeRate);
+        
+        // 3. Perform another swap
+        uint256 secondSwapAmount = 1 ether;
+        uint256 secondExpectedFee = (secondSwapAmount * newFeeRate) / BASIS_POINTS;
+        
+        _performSwap(secondSwapAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee + secondExpectedFee);
+        
+        // 4. Change treasury
+        vm.prank(treasury);
+        hook.setTreasury(newTreasury);
+        
+        // 5. Withdraw fees as new treasury
+        uint256 totalFees = expectedFee + secondExpectedFee;
+        vm.prank(newTreasury);
+        hook.withdrawFees(poolKey.currency0, totalFees);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+        assertEq(mockPoolManager.getBalance(poolKey.currency0, newTreasury), totalFees);
+    }
+
+    function test_MultipleTokenFees() public {
+        uint256 swapAmount = 1 ether;
+        uint256 expectedFee = (swapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        // Swap token0 for token1
+        _performSwap(swapAmount, true);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+        assertEq(hook.getAvailableFees(poolKey.currency1), 0);
+        
+        // Swap token1 for token0
+        _performSwap(swapAmount, false);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+        assertEq(hook.getAvailableFees(poolKey.currency1), expectedFee);
+        
+        // Withdraw both
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency0, expectedFee);
+        
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency1, expectedFee);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+        assertEq(hook.getAvailableFees(poolKey.currency1), 0);
+    }
+
+    function test_FeeAccumulation() public {
+        uint256 swapAmount = 1 ether;
+        uint256 expectedFeePerSwap = (swapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        uint256 numSwaps = 5;
+        
+        // Perform multiple swaps
+        for (uint256 i = 0; i < numSwaps; i++) {
+            _performSwap(swapAmount, true);
+        }
+        
+        uint256 totalExpectedFees = expectedFeePerSwap * numSwaps;
+        assertEq(hook.getAvailableFees(poolKey.currency0), totalExpectedFees);
+        
+        // Withdraw all fees
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency0, 0); // Withdraw all
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+        assertEq(mockPoolManager.getBalance(poolKey.currency0, treasury), totalExpectedFees);
+    }
+
