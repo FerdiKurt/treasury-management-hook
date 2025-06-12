@@ -1395,27 +1395,74 @@ contract AdvancedTreasuryHookTest is TreasuryHookTest {
         assertGt(highFeeCollected, lowFeeCollected * 5, "High fee should be much higher");
     }
 
-
-    // ============ HELPER FUNCTIONS ============
+    // ============ STATE CONSISTENCY TESTS ============
     
-    function _performSwapOnPool(uint256 swapAmount, bool zeroForOne, PoolKey memory targetPool) internal {
-        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
-            zeroForOne: zeroForOne,
-            amountSpecified: -int256(swapAmount),
-            sqrtPriceLimitX96: zeroForOne ? 
-                TestConstants.SQRT_PRICE_1_2 :
-                TestConstants.SQRT_PRICE_2_1
-        });
+    function test_StateConsistency_ConcurrentOperations() public {
+        // Simulate concurrent operations
+        uint256 swapAmount = TestConstants.MEDIUM_AMOUNT;
+        uint256 expectedFee = TestUtils.calculateExpectedFee(swapAmount, INITIAL_FEE_RATE);
         
-        BalanceDelta delta;
-        if (zeroForOne) {
-            delta = _createBalanceDelta(-int128(int256(swapAmount)), int128(int256(swapAmount * 99 / 100)));
-        } else {
-            delta = _createBalanceDelta(int128(int256(swapAmount * 99 / 100)), -int128(int256(swapAmount)));
-        }
+        // Multiple swaps
+        _performSwap(swapAmount, true);
+        _performSwap(swapAmount, false);
+        _performSwap(swapAmount, true);
         
-        vm.prank(address(mockPoolManager));
-        hook.afterSwap(user, targetPool, params, delta, "");
+        // Check state consistency
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee * 2);
+        assertEq(hook.getAvailableFees(poolKey.currency1), expectedFee * 1);
+        
+        // Partial withdrawal
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency0, expectedFee);
+        
+        // More swaps
+        _performSwap(swapAmount, true);
+        _performSwap(swapAmount, false);
+        
+        // Final state verification
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee * 2);
+        assertEq(hook.getAvailableFees(poolKey.currency1), expectedFee * 2);
+    }
+
+    function test_StateConsistency_TreasuryChangesDuringActivity() public {
+        address newTreasury1 = makeAddr("newTreasury1");
+        address newTreasury2 = makeAddr("newTreasury2");
+        
+        uint256 swapAmount = TestConstants.MEDIUM_AMOUNT;
+        uint256 expectedFee = TestUtils.calculateExpectedFee(swapAmount, INITIAL_FEE_RATE);
+        
+        // Phase 1: Original treasury
+        _performSwap(swapAmount, true);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+        
+        // Change treasury mid-activity
+        vm.prank(treasury);
+        hook.setTreasury(newTreasury1);
+        assertEq(hook.treasury(), newTreasury1);
+        
+        // Phase 2: New treasury (fees should still accumulate)
+        _performSwap(swapAmount, true);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee * 2);
+        
+        // Change treasury again
+        vm.prank(newTreasury1);
+        hook.setTreasury(newTreasury2);
+        
+        // Original treasury cannot withdraw
+        vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency0, expectedFee);
+        
+        // Old treasury cannot withdraw
+        vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+        vm.prank(newTreasury1);
+        hook.withdrawFees(poolKey.currency0, expectedFee);
+        
+        // Current treasury can withdraw all accumulated fees
+        vm.prank(newTreasury2);
+        hook.withdrawFees(poolKey.currency0, expectedFee * 2);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
     }
     
     function _createBalanceDelta(int128 amount0, int128 amount1) internal pure returns (BalanceDelta) {
