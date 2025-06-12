@@ -1085,6 +1085,38 @@ contract TreasuryHookTest is Test {
         }
     }
 
+    // ============ BOUNDARY TESTS ============
+    
+    function test_BoundaryTest_MaxUint128Swap() public {
+        // Test with maximum uint128 value (but safe for calculations)
+        uint256 maxSafeAmount = type(uint128).max / 10000;
+        uint256 expectedFee = (maxSafeAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        _performSwap(maxSafeAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function test_BoundaryTest_MinSwapAmount() public {
+        // Test with 1 wei
+        uint256 minAmount = 1;
+        uint256 expectedFee = (minAmount * INITIAL_FEE_RATE) / BASIS_POINTS; // Should be 0 due to rounding
+        
+        _performSwap(minAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function test_BoundaryTest_RoundingBehavior() public {
+        // Test fee calculation rounding
+        uint256 swapAmount = 99; // Amount that would result in fractional fee
+        uint256 expectedFee = (swapAmount * INITIAL_FEE_RATE) / BASIS_POINTS; // Should round down to 0
+        
+        _performSwap(swapAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+}
 
     // ============ HELPER FUNCTIONS ============
     
