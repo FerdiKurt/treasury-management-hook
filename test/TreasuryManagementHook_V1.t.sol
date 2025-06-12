@@ -999,3 +999,39 @@ contract TreasuryHookTest is Test {
         vm.stopPrank();
     }
 
+    // ============ GAS OPTIMIZATION TESTS ============
+    
+    function test_GasUsage_AfterSwap() public {
+        uint256 swapAmount = 1 ether;
+        
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -int256(swapAmount),
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        BalanceDelta delta = _createBalanceDelta(-int128(int256(swapAmount)), int128(int256(swapAmount * 99 / 100)));
+        
+        vm.prank(address(mockPoolManager));
+        uint256 gasStart = gasleft();
+        hook.afterSwap(user, poolKey, params, delta, "");
+        uint256 gasUsed = gasStart - gasleft();
+        
+        // Verify gas usage is reasonable 
+        assertLt(gasUsed, 125000, "Gas usage too high for afterSwap");
+    }
+
+    function test_GasUsage_WithdrawFees() public {
+        Currency token = poolKey.currency0;
+        uint256 feeAmount = 1 ether;
+        
+        _simulateFeesCollected(token, feeAmount);
+        
+        vm.prank(treasury);
+        uint256 gasStart = gasleft();
+        hook.withdrawFees(token, feeAmount);
+        uint256 gasUsed = gasStart - gasleft();
+        
+        // Verify gas usage is reasonable
+        assertLt(gasUsed, 60000, "Gas usage too high for withdrawFees");
+    }
