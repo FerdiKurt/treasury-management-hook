@@ -468,3 +468,142 @@ contract TreasuryHookTest is Test {
         assertEq(BeforeSwapDelta.unwrap(delta), 0);
         assertEq(fee, 0);
     }
+
+    // ============ AFTER SWAP TESTS ============
+    
+    function test_AfterSwap_ZeroForOne_CollectsFees() public {
+        uint256 swapAmount = 1 ether;
+        uint256 expectedFee = (swapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -int256(swapAmount),
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        // Create BalanceDelta: negative amount0 (input), positive amount1 (output)
+        BalanceDelta delta = _createBalanceDelta(-int128(int256(swapAmount)), int128(int256(swapAmount * 99 / 100)));
+        
+        vm.expectEmit(true, true, false, true);
+        emit TreasuryFeeCollected(poolId, poolKey.currency0, expectedFee);
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, int128 feeAmount) = hook.afterSwap(
+            user,
+            poolKey,
+            params,
+            delta,
+            ""
+        );
+        
+        assertEq(selector, IHooks.afterSwap.selector);
+        assertEq(feeAmount, int128(int256(expectedFee)));
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function test_AfterSwap_OneForZero_CollectsFees() public {
+        uint256 swapAmount = 1 ether;
+        uint256 expectedFee = (swapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: false,
+            amountSpecified: -int256(swapAmount),
+            sqrtPriceLimitX96: 158456325028528675187087900672 // SQRT_PRICE_2_1
+        });
+        
+        // Create BalanceDelta: positive amount0 (output), negative amount1 (input)
+        BalanceDelta delta = _createBalanceDelta(int128(int256(swapAmount * 99 / 100)), -int128(int256(swapAmount)));
+        
+        vm.expectEmit(true, true, false, true);
+        emit TreasuryFeeCollected(poolId, poolKey.currency1, expectedFee);
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, int128 feeAmount) = hook.afterSwap(
+            user,
+            poolKey,
+            params,
+            delta,
+            ""
+        );
+        
+        assertEq(selector, IHooks.afterSwap.selector);
+        assertEq(feeAmount, int128(int256(expectedFee)));
+        assertEq(hook.getAvailableFees(poolKey.currency1), expectedFee);
+    }
+
+    function test_AfterSwap_ZeroFeeRate() public {
+        // Set fee rate to 0
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(0);
+        
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -1 ether,
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        BalanceDelta delta = _createBalanceDelta(-1 ether, 0.99 ether);
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, int128 feeAmount) = hook.afterSwap(
+            user,
+            poolKey,
+            params,
+            delta,
+            ""
+        );
+        
+        assertEq(selector, IHooks.afterSwap.selector);
+        assertEq(feeAmount, 0);
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+    }
+
+    function test_AfterSwap_UnmanagedPool() public {
+        hook.setPoolManaged(poolKey, false);
+        
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -1 ether,
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        BalanceDelta delta = _createBalanceDelta(-1 ether, 0.99 ether);
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, int128 feeAmount) = hook.afterSwap(
+            user,
+            poolKey,
+            params,
+            delta,
+            ""
+        );
+        
+        assertEq(selector, IHooks.afterSwap.selector);
+        assertEq(feeAmount, 0);
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+    }
+
+    function test_AfterSwap_PositiveAmounts_NoFee() public {
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -1 ether,
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        // Create delta with positive amount0 (should not charge fee)
+        BalanceDelta delta = _createBalanceDelta(1 ether, -0.99 ether);
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, int128 feeAmount) = hook.afterSwap(
+            user,
+            poolKey,
+            params,
+            delta,
+            ""
+        );
+        
+        assertEq(selector, IHooks.afterSwap.selector);
+        assertEq(feeAmount, 0);
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+    }
+
