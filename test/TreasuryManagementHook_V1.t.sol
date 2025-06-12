@@ -733,3 +733,54 @@ contract TreasuryHookTest is Test {
         assertFalse(hook.getPoolManagedStatus(newPoolKey));
     }
 
+    // ============ FUZZ TESTS ============
+    
+    function testFuzz_SetTreasuryFeeRate(uint24 feeRate) public {
+        if (feeRate > MAX_FEE_RATE) {
+            vm.expectRevert(TreasuryManagementHook_V1.FeeRateTooHigh.selector);
+            vm.prank(treasury);
+            hook.setTreasuryFeeRate(feeRate);
+        } else {
+            vm.prank(treasury);
+            hook.setTreasuryFeeRate(feeRate);
+            assertEq(hook.treasuryFeeRate(), feeRate);
+        }
+    }
+
+    function testFuzz_FeeCalculation(uint128 swapAmount, uint24 feeRate) public {
+        vm.assume(swapAmount > 0 && swapAmount <= 100 ether);
+        vm.assume(feeRate <= MAX_FEE_RATE);
+        
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(feeRate);
+        
+        uint256 expectedFee = (uint256(swapAmount) * feeRate) / BASIS_POINTS;
+        
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: -int256(uint256(swapAmount)),
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        BalanceDelta delta = _createBalanceDelta(-int128(int256(uint256(swapAmount))), int128(int256(uint256(swapAmount) * 99 / 100)));
+        
+        vm.prank(address(mockPoolManager));
+        (, int128 feeAmount) = hook.afterSwap(user, poolKey, params, delta, "");
+        
+        assertEq(feeAmount, int128(int256(expectedFee)));
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function testFuzz_WithdrawFees(uint256 totalFees, uint256 withdrawAmount) public {
+        totalFees = bound(totalFees, 1, 100 ether);
+        withdrawAmount = bound(withdrawAmount, 1, totalFees);
+        
+        Currency token = poolKey.currency0;
+        _simulateFeesCollected(token, totalFees);
+        
+        vm.prank(treasury);
+        hook.withdrawFees(token, withdrawAmount);
+        
+        assertEq(hook.getAvailableFees(token), totalFees - withdrawAmount);
+    }
+
