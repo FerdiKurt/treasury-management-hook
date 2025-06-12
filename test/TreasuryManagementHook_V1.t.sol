@@ -1464,31 +1464,77 @@ contract AdvancedTreasuryHookTest is TreasuryHookTest {
         
         assertEq(hook.getAvailableFees(poolKey.currency0), 0);
     }
-    
-    function _createBalanceDelta(int128 amount0, int128 amount1) internal pure returns (BalanceDelta) {
-    // Convert to uint256 to avoid sign extension issues
-    uint256 unsignedAmount0 = uint256(int256(amount0));
-    uint256 unsignedAmount1 = uint256(int256(amount1));
-    
-    // Mask to 128 bits to ensure no overflow
-    unsignedAmount0 = unsignedAmount0 & 0xffffffffffffffffffffffffffffffff;
-    unsignedAmount1 = unsignedAmount1 & 0xffffffffffffffffffffffffffffffff;
-    
-    // Pack into int256
-    int256 packed = int256((unsignedAmount0 << 128) | unsignedAmount1);
-    return BalanceDelta.wrap(packed);
-    }
 
-    function _simulateFeesCollected(Currency token, uint256 feeAmount) internal {
-        // Simulate a swap that would generate this fee amount
-        uint256 swapAmount = (feeAmount * BASIS_POINTS) / INITIAL_FEE_RATE;
-        _performSwap(swapAmount, token == poolKey.currency0);
+    // ============ PRECISION AND ROUNDING TESTS ============
+    
+    function test_Precision_FeeCalculationAccuracy() public {
+        uint24[] memory precisionTestRates = new uint24[](6);
+        precisionTestRates[0] = 1;    // 0.01%
+        precisionTestRates[1] = 5;    // 0.05%
+        precisionTestRates[2] = 33;   // 0.33%
+        precisionTestRates[3] = 99;   // 0.99%
+        precisionTestRates[4] = 333;  // 3.33%
+        precisionTestRates[5] = 999;  // 9.99%
         
-        // Verify the expected fee was collected
-        assertEq(hook.getAvailableFees(token), feeAmount);
+        uint256[] memory testAmounts = new uint256[](5);
+        testAmounts[0] = 1e15;    // 0.001 tokens
+        testAmounts[1] = 1e18;    // 1 token
+        testAmounts[2] = 123e18;  // 123 tokens
+        testAmounts[3] = 1000e18; // 1000 tokens
+        testAmounts[4] = 9999e18; // 9999 tokens
+        
+        for (uint256 i = 0; i < precisionTestRates.length; i++) {
+            for (uint256 j = 0; j < testAmounts.length; j++) {
+                uint24 feeRate = precisionTestRates[i];
+                uint256 amount = testAmounts[j];
+                
+                vm.prank(treasury);
+                hook.setTreasuryFeeRate(feeRate);
+                
+                uint256 expectedFee = TestUtils.calculateExpectedFee(amount, feeRate);
+                uint256 feesBefore = hook.getAvailableFees(poolKey.currency0);
+                
+                _performSwap(amount, true);
+                
+                uint256 feesAfter = hook.getAvailableFees(poolKey.currency0);
+                uint256 actualFee = feesAfter - feesBefore;
+                
+                assertEq(actualFee, expectedFee, "Fee calculation precision mismatch");
+                
+                // Clean up for next test
+                if (actualFee > 0) {
+                    vm.prank(treasury);
+                    hook.withdrawFees(poolKey.currency0, actualFee);
+                }
+            }
+        }
     }
 
-    function _performSwap(uint256 swapAmount, bool zeroForOne) internal {
+    function test_Precision_RoundingConsistency() public {
+        // Test amounts that result in fractional fees
+        uint256[] memory roundingTestAmounts = new uint256[](5);
+        roundingTestAmounts[0] = 9999;    // 0.99 wei fee at 1%
+        roundingTestAmounts[1] = 19999;   // 1.99 wei fee at 1%
+        roundingTestAmounts[2] = 29999;   // 2.99 wei fee at 1%
+        roundingTestAmounts[3] = 39999;   // 3.99 wei fee at 1%
+        roundingTestAmounts[4] = 49999;   // 4.99 wei fee at 1%
+        
+        for (uint256 i = 0; i < roundingTestAmounts.length; i++) {
+            uint256 amount = roundingTestAmounts[i];
+            uint256 expectedFee = (amount * INITIAL_FEE_RATE) / TestConstants.BASIS_POINTS;
+            
+            _performSwap(amount, true);
+            
+            uint256 actualFee = hook.getAvailableFees(poolKey.currency0);
+            assertEq(actualFee, expectedFee, "Rounding inconsistency detected");
+            
+            // Clean up
+            if (actualFee > 0) {
+                vm.prank(treasury);
+                hook.withdrawFees(poolKey.currency0, actualFee);
+            }
+        }
+    }
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: zeroForOne,
             amountSpecified: -int256(swapAmount),
