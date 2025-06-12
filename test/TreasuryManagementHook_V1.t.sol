@@ -1116,6 +1116,51 @@ contract TreasuryHookTest is Test {
         
         assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
     }
+
+    // ============ HELPER FUNCTIONS ============
+
+    function _simulateFeesCollected(Currency token, uint256 feeAmount) internal {
+        // Simulate a swap that would generate this fee amount
+        uint256 swapAmount = (feeAmount * BASIS_POINTS) / INITIAL_FEE_RATE;
+        _performSwap(swapAmount, token == poolKey.currency0);
+        
+        // Verify the expected fee was collected
+        assertEq(hook.getAvailableFees(token), feeAmount);
+    }
+
+    function _performSwap(uint256 swapAmount, bool zeroForOne) internal {
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: zeroForOne,
+            amountSpecified: -int256(swapAmount),
+            sqrtPriceLimitX96: zeroForOne ? 
+                79228162514264337593543950336 :  // SQRT_PRICE_1_2
+                158456325028528675187087900672   // SQRT_PRICE_2_1
+        });
+        
+        BalanceDelta delta;
+        if (zeroForOne) {
+            delta = _createBalanceDelta(-int128(int256(swapAmount)), int128(int256(swapAmount * 99 / 100)));
+        } else {
+            delta = _createBalanceDelta(int128(int256(swapAmount * 99 / 100)), -int128(int256(swapAmount)));
+        }
+        
+        vm.prank(address(mockPoolManager));
+        hook.afterSwap(user, poolKey, params, delta, "");
+    }
+
+    function _createBalanceDelta(int128 amount0, int128 amount1) internal pure returns (BalanceDelta) {
+    // Convert to uint256 to avoid sign extension issues
+        uint256 unsignedAmount0 = uint256(int256(amount0));
+        uint256 unsignedAmount1 = uint256(int256(amount1));
+        
+        // Mask to 128 bits to ensure no overflow
+        unsignedAmount0 = unsignedAmount0 & 0xffffffffffffffffffffffffffffffff;
+        unsignedAmount1 = unsignedAmount1 & 0xffffffffffffffffffffffffffffffff;
+        
+        // Pack into int256
+        int256 packed = int256((unsignedAmount0 << 128) | unsignedAmount1);
+        return BalanceDelta.wrap(packed);
+    }
 }
 
 /// @title Advanced Treasury Hook Test Scenarios
