@@ -380,3 +380,41 @@ contract TreasuryHookTest is Test {
         assertFalse(permissions.afterRemoveLiquidityReturnDelta);
     }
 
+    // ============ POOL MANAGEMENT TESTS ============
+
+    function test_AfterInitialize() public {
+        PoolKey memory newPoolKey = PoolKey({
+            currency0: Currency.wrap(address(token0)),
+            currency1: Currency.wrap(address(token1)),
+            fee: 5000, // Different fee to create new pool
+            tickSpacing: 60,
+            hooks: IHooks(address(hook))
+        });
+        
+        assertFalse(hook.getPoolManagedStatus(newPoolKey));
+        
+        // Simulate the PoolManager calling afterInitialize with correct parameters
+        vm.prank(address(mockPoolManager));
+        bytes4 selector = hook.afterInitialize(address(this), newPoolKey, 0, 0);
+        
+        assertEq(selector, IHooks.afterInitialize.selector);
+        assertTrue(hook.getPoolManagedStatus(newPoolKey));
+    }
+
+    function test_SetPoolManaged() public {
+        PoolKey memory newPoolKey = PoolKey({
+            currency0: Currency.wrap(address(token0)),
+            currency1: Currency.wrap(address(token1)),
+            fee: 5000,
+            tickSpacing: 60,
+            hooks: IHooks(address(hook))
+        });
+        
+        assertFalse(hook.getPoolManagedStatus(newPoolKey));
+        
+        hook.setPoolManaged(newPoolKey, true);
+        assertTrue(hook.getPoolManagedStatus(newPoolKey));
+        
+        hook.setPoolManaged(newPoolKey, false);
+        assertFalse(hook.getPoolManagedStatus(newPoolKey));
+    }
