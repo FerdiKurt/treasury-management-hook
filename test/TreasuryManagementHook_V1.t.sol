@@ -867,3 +867,72 @@ contract TreasuryHookTest is Test {
         assertEq(mockPoolManager.getBalance(poolKey.currency0, treasury), totalExpectedFees);
     }
 
+    // ============ EDGE CASE TESTS ============
+    
+    function test_SwapWithZeroAmount() public {
+        IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
+            zeroForOne: true,
+            amountSpecified: 0,
+            sqrtPriceLimitX96: 79228162514264337593543950336
+        });
+        
+        BalanceDelta delta = _createBalanceDelta(0, 0);
+        
+        vm.prank(address(mockPoolManager));
+        (bytes4 selector, int128 feeAmount) = hook.afterSwap(
+            user,
+            poolKey,
+            params,
+            delta,
+            ""
+        );
+        
+        assertEq(selector, IHooks.afterSwap.selector);
+        assertEq(feeAmount, 0);
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+    }
+
+    function test_SwapWithMaxFeeRate() public {
+        // Set maximum fee rate
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(MAX_FEE_RATE);
+        
+        uint256 swapAmount = 1 ether;
+        uint256 expectedFee = (swapAmount * MAX_FEE_RATE) / BASIS_POINTS; // 10%
+        
+        _performSwap(swapAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function test_SwapWithMinFeeRate() public {
+        // Set minimum fee rate (1 basis point)
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(1);
+        
+        uint256 swapAmount = 1 ether;
+        uint256 expectedFee = (swapAmount * 1) / BASIS_POINTS; // 0.01%
+        
+        _performSwap(swapAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function test_LargeSwapAmount() public {
+        uint256 largeSwapAmount = 1000 ether;
+        uint256 expectedFee = (largeSwapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        _performSwap(largeSwapAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function test_SmallSwapAmount() public {
+        uint256 smallSwapAmount = 1; // 1 wei
+        uint256 expectedFee = (smallSwapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        _performSwap(smallSwapAmount, true);
+        
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
