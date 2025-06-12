@@ -936,3 +936,66 @@ contract TreasuryHookTest is Test {
         assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
     }
 
+    // ============ SECURITY TESTS ============
+    
+    function test_ReentrancyProtection() public {
+        // This test verifies that the hook doesn't have reentrancy issues
+        // Since we're using a mock pool manager, we can't test real reentrancy
+        // but we can verify state consistency
+        
+        uint256 swapAmount = 1 ether;
+        _performSwap(swapAmount, true);
+        
+        uint256 feesAfterSwap = hook.getAvailableFees(poolKey.currency0);
+        
+        // Perform another swap
+        _performSwap(swapAmount, true);
+        
+        uint256 feesAfterSecondSwap = hook.getAvailableFees(poolKey.currency0);
+        uint256 expectedFee = (swapAmount * INITIAL_FEE_RATE) / BASIS_POINTS;
+        
+        assertEq(feesAfterSecondSwap, feesAfterSwap + expectedFee);
+    }
+
+    function test_UnauthorizedAccess() public {
+        // Test all treasury-only functions with unauthorized user
+        address[] memory unauthorizedUsers = new address[](3);
+        unauthorizedUsers[0] = user;
+        unauthorizedUsers[1] = address(this);
+        unauthorizedUsers[2] = address(0x123);
+        
+        for (uint256 i = 0; i < unauthorizedUsers.length; i++) {
+            address unauthorizedUser = unauthorizedUsers[i];
+            
+            vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+            vm.prank(unauthorizedUser);
+            hook.setTreasury(newTreasury);
+            
+            vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+            vm.prank(unauthorizedUser);
+            hook.setTreasuryFeeRate(200);
+            
+            vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+            vm.prank(unauthorizedUser);
+            hook.withdrawFees(poolKey.currency0, 1 ether);
+        }
+    }
+
+    function test_InvalidParameterBounds() public {
+        // Test various invalid parameters
+        vm.startPrank(treasury);
+        
+        // Fee rate bounds
+        vm.expectRevert(TreasuryManagementHook_V1.FeeRateTooHigh.selector);
+        hook.setTreasuryFeeRate(MAX_FEE_RATE + 1);
+        
+        vm.expectRevert(TreasuryManagementHook_V1.FeeRateTooHigh.selector);
+        hook.setTreasuryFeeRate(type(uint24).max);
+        
+        // Treasury address bounds
+        vm.expectRevert(TreasuryManagementHook_V1.InvalidTreasuryAddress.selector);
+        hook.setTreasury(address(0));
+        
+        vm.stopPrank();
+    }
+
