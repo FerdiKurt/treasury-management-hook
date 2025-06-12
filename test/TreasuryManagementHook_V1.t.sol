@@ -607,3 +607,99 @@ contract TreasuryHookTest is Test {
         assertEq(hook.getAvailableFees(poolKey.currency0), 0);
     }
 
+    // ============ FEE WITHDRAWAL TESTS ============
+    
+    function test_WithdrawFees_Success() public {
+        Currency token = poolKey.currency0;
+        uint256 feeAmount = 1 ether;
+        
+        // Fee simulation
+        _simulateFeesCollected(token, feeAmount);
+        
+        uint256 treasuryBalanceBefore = mockPoolManager.getBalance(token, treasury);
+        
+        vm.expectEmit(true, false, false, true);
+        emit FeesWithdrawn(token, feeAmount);
+        
+        vm.prank(treasury);
+        hook.withdrawFees(token, feeAmount);
+        
+        assertEq(hook.getAvailableFees(token), 0);
+        assertEq(mockPoolManager.getBalance(token, treasury), treasuryBalanceBefore + feeAmount);
+    }
+
+    function test_WithdrawFees_WithdrawAll() public {
+        Currency token = poolKey.currency0;
+        uint256 feeAmount = 1 ether;
+        
+        _simulateFeesCollected(token, feeAmount);
+        
+        vm.expectEmit(true, false, false, true);
+        emit FeesWithdrawn(token, feeAmount);
+        
+        vm.prank(treasury);
+        hook.withdrawFees(token, 0); // 0 means withdraw all
+        
+        assertEq(hook.getAvailableFees(token), 0);
+    }
+
+    function test_WithdrawFees_PartialWithdrawal() public {
+        Currency token = poolKey.currency0;
+        uint256 totalFees = 1 ether;
+        uint256 withdrawAmount = 0.5 ether;
+        
+        _simulateFeesCollected(token, totalFees);
+        
+        vm.expectEmit(true, false, false, true);
+        emit FeesWithdrawn(token, withdrawAmount);
+        
+        vm.prank(treasury);
+        hook.withdrawFees(token, withdrawAmount);
+        
+        assertEq(hook.getAvailableFees(token), totalFees - withdrawAmount);
+    }
+
+    function test_WithdrawFees_OnlyTreasury() public {
+        vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+        vm.prank(unauthorized);
+        hook.withdrawFees(poolKey.currency0, 1 ether);
+    }
+
+    function test_WithdrawFees_InsufficientFees() public {
+        vm.expectRevert(TreasuryManagementHook_V1.InsufficientFees.selector);
+        vm.prank(treasury);
+        hook.withdrawFees(poolKey.currency0, 1 ether);
+    }
+
+    function test_WithdrawFees_AmountTooHigh() public {
+        Currency token = poolKey.currency0;
+        uint256 feeAmount = 1 ether;
+        
+        _simulateFeesCollected(token, feeAmount);
+        
+        vm.expectRevert(TreasuryManagementHook_V1.InsufficientFees.selector);
+        vm.prank(treasury);
+        hook.withdrawFees(token, feeAmount + 1);
+    }
+
+    function test_WithdrawFees_AfterTreasuryChange() public {
+        Currency token = poolKey.currency0;
+        uint256 feeAmount = 1 ether;
+        
+        _simulateFeesCollected(token, feeAmount);
+        
+        // Change treasury
+        vm.prank(treasury);
+        hook.setTreasury(newTreasury);
+        
+        // Old treasury can't withdraw
+        vm.expectRevert(TreasuryManagementHook_V1.OnlyTreasuryAllowed.selector);
+        vm.prank(treasury);
+        hook.withdrawFees(token, feeAmount);
+        
+        // New treasury can withdraw
+        vm.prank(newTreasury);
+        hook.withdrawFees(token, feeAmount);
+        
+        assertEq(hook.getAvailableFees(token), 0);
+    }
