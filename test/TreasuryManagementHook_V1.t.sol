@@ -1535,12 +1535,16 @@ contract AdvancedTreasuryHookTest is TreasuryHookTest {
             }
         }
     }
+
+    // ============ HELPER FUNCTIONS ============
+    
+    function _performSwapOnPool(uint256 swapAmount, bool zeroForOne, PoolKey memory targetPool) internal {
         IPoolManager.SwapParams memory params = IPoolManager.SwapParams({
             zeroForOne: zeroForOne,
             amountSpecified: -int256(swapAmount),
             sqrtPriceLimitX96: zeroForOne ? 
-                79228162514264337593543950336 :  // SQRT_PRICE_1_2
-                158456325028528675187087900672   // SQRT_PRICE_2_1
+                TestConstants.SQRT_PRICE_1_2 :
+                TestConstants.SQRT_PRICE_2_1
         });
         
         BalanceDelta delta;
@@ -1551,6 +1555,6 @@ contract AdvancedTreasuryHookTest is TreasuryHookTest {
         }
         
         vm.prank(address(mockPoolManager));
-        hook.afterSwap(user, poolKey, params, delta, "");
+        hook.afterSwap(user, targetPool, params, delta, "");
     }
 }
