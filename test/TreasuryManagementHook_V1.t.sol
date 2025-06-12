@@ -703,3 +703,33 @@ contract TreasuryHookTest is Test {
         
         assertEq(hook.getAvailableFees(token), 0);
     }
+
+    // ============ VIEW FUNCTION TESTS ============
+    
+    function test_GetAvailableFees() public {
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+        assertEq(hook.getAvailableFees(poolKey.currency1), 0);
+        
+        Currency token = poolKey.currency0;
+        uint256 feeAmount = 1 ether;
+        
+        _simulateFeesCollected(token, feeAmount);
+        
+        assertEq(hook.getAvailableFees(token), feeAmount);
+        assertEq(hook.getAvailableFees(poolKey.currency1), 0);
+    }
+
+    function test_GetPoolManagedStatus() public view {
+        assertTrue(hook.getPoolManagedStatus(poolKey));
+        
+        PoolKey memory newPoolKey = PoolKey({
+            currency0: Currency.wrap(address(token0)),
+            currency1: Currency.wrap(address(token1)),
+            fee: 5000,
+            tickSpacing: 60,
+            hooks: IHooks(address(hook))
+        });
+        
+        assertFalse(hook.getPoolManagedStatus(newPoolKey));
+    }
+
