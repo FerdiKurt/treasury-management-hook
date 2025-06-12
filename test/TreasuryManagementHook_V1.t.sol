@@ -1285,6 +1285,71 @@ contract AdvancedTreasuryHookTest is TreasuryHookTest {
         }
     }
 
+    // ============ ECONOMIC ATTACK VECTOR TESTS ============
+    
+    function test_EconomicAttack_FeeAvoidance() public {
+        // Attempt to avoid fees by using unmanaged pools
+        PoolKey memory unmanagedPool = TestUtils.createPoolKey(
+            poolKey.currency0,
+            poolKey.currency1,
+            5000, // Different fee tier
+            TestConstants.TICK_SPACING_MEDIUM,
+            address(hook)
+        );
+        
+        // Don't register this pool
+        assertFalse(hook.getPoolManagedStatus(unmanagedPool));
+        
+        uint256 swapAmount = TestConstants.LARGE_AMOUNT;
+        
+        // Swap on unmanaged pool should not collect fees
+        _performSwapOnPool(swapAmount, true, unmanagedPool);
+        assertEq(hook.getAvailableFees(poolKey.currency0), 0);
+        
+        // Swap on managed pool should collect fees
+        _performSwap(swapAmount, true);
+        uint256 expectedFee = TestUtils.calculateExpectedFee(swapAmount, INITIAL_FEE_RATE);
+        assertEq(hook.getAvailableFees(poolKey.currency0), expectedFee);
+    }
+
+    function test_EconomicAttack_DustAmountExploitation() public {
+        // Try to exploit with dust amounts that round down to zero fees
+        uint256 dustAmount = TestConstants.BASIS_POINTS / (INITIAL_FEE_RATE + 1);
+        
+        assertTrue(TestUtils.isDustAmount(dustAmount, INITIAL_FEE_RATE));
+        
+        // Perform many dust swaps
+        for (uint256 i = 0; i < 1000; i++) {
+            _performSwap(dustAmount, i % 2 == 0);
+        }
+        
+        // Should have collected zero or minimal fees
+        uint256 totalFees = hook.getAvailableFees(poolKey.currency0) + hook.getAvailableFees(poolKey.currency1);
+        assertLt(totalFees, 1000, "Dust exploitation should not accumulate significant fees");
+    }
+
+    function test_EconomicAttack_FrontrunningFeeChanges() public {
+        uint256 largeSwapAmount = TestConstants.HUGE_AMOUNT;
+        
+        // Simulate frontrunning: large swap before fee rate increase
+        _performSwap(largeSwapAmount, true);
+        uint256 lowFeeCollected = TestUtils.calculateExpectedFee(largeSwapAmount, INITIAL_FEE_RATE);
+        
+        // Treasury increases fee rate
+        vm.prank(treasury);
+        hook.setTreasuryFeeRate(TestConstants.MAX_FEE_RATE);
+        
+        // Same swap after fee increase
+        _performSwap(largeSwapAmount, true);
+        uint256 highFeeCollected = TestUtils.calculateExpectedFee(largeSwapAmount, TestConstants.MAX_FEE_RATE);
+        
+        uint256 totalFees = hook.getAvailableFees(poolKey.currency0);
+        assertEq(totalFees, lowFeeCollected + highFeeCollected);
+        
+        // Verify the fee difference is significant
+        assertGt(highFeeCollected, lowFeeCollected * 5, "High fee should be much higher");
+    }
+
 
     // ============ HELPER FUNCTIONS ============
     
