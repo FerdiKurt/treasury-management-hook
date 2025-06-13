@@ -250,30 +250,36 @@ forge test --gas-report
 forge coverage
 ```
 
+### Key Test Functions
+
 ```solidity
-// Example: DAO governance integration
-contract DAOTreasury {
-    TreasuryManagementHook public treasuryHook;
-    
-    function updateFeeRate(uint24 newRate) external onlyGovernance {
-        treasuryHook.setTreasuryFeeRate(newRate);
-    }
-}
+// Constructor validation
+test_Constructor_Success()
+test_Constructor_InvalidTreasury()
+test_Constructor_FeeRateTooHigh()
+
+// Treasury management
+test_SetTreasury_Success()
+test_SetTreasuryFeeRate_Success()
+test_SetTreasury_OnlyTreasury()
+
+// Fee collection
+test_AfterSwap_ZeroForOne_CollectsFees()
+test_AfterSwap_OneForZero_CollectsFees()
+test_AfterSwap_ZeroFeeRate()
+
+// Fee withdrawal
+test_WithdrawFees_Success()
+test_WithdrawFees_OnlyTreasury()
+test_WithdrawFees_InsufficientFees()
+
+// Stress testing
+test_StressTest_ManyFeeRateChanges()
+test_StressTest_ManySwaps()
+test_StressTest_LargeAmounts()
+
+// Fuzz testing
+testFuzz_SetTreasuryFeeRate()
+testFuzz_FeeCalculation()
+testFuzz_WithdrawFees()
 ```
-
-## Deployment Information
-
-### Required Dependencies
-- Uniswap V4 Core (`@uniswap/v4-core`)
-- Uniswap V4 Periphery (`@uniswap/v4-periphery`)
-- Solidity ^0.8.0
-
-### Network Deployment
-1. Deploy the hook contract
-2. Set up treasury address
-3. Configure initial fee rate
-4. Create pools using the hook
-
-### Verification
-After deployment, verify the contract on Etherscan or similar block explorers using the constructor parameters.
-
