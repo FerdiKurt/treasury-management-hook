@@ -44,45 +44,38 @@ The Treasury Management Hook is a Uniswap V4 hook that automatically collects co
 - 🔒 **Input Validation**: Input validation and error handling
 - 🔒 **Reentrancy Safety**: Protected against reentrancy attacks
 
+## 🏗 Contract Architecture
+
+### Main Contract: `TestTreasuryManagementHook`
+
 ```solidity
-constructor(
-    IPoolManager _poolManager,    // Uniswap V4 Pool Manager address
-    address _treasury,            // Initial treasury address
-    uint24 _treasuryFeeRate       // Initial fee rate in basis points
-)
+contract TestTreasuryManagementHook is BaseHook {
+    // Core state variables
+    address public treasury;                    // Treasury address
+    uint24 public treasuryFeeRate;             // Fee rate in basis points
+    mapping(PoolId => bool) public isPoolManaged;
+    mapping(Currency => uint256) public accumulatedFees;
+    
+    // Constants
+    uint24 public constant MAX_FEE_RATE = 1000;    // 10%
+    uint256 public constant BASIS_POINTS = 10000;
+}
 ```
 
 ### Key Functions
 
-#### Administrative Functions
-```solidity
-// Update treasury address (only callable by current treasury)
-function setTreasury(address _newTreasury) external
+#### Treasury Management
+- `setTreasury(address)` - Update treasury address
+- `setTreasuryFeeRate(uint24)` - Update fee rate (0-1000 basis points)
+- `withdrawFees(Currency, uint256)` - Withdraw accumulated fees
 
-// Update fee rate (only callable by treasury)
-function setTreasuryFeeRate(uint24 _newFeeRate) external
+#### Pool Management
+- `getPoolManagedStatus(PoolKey)` - Check if pool is managed
 
-// Withdraw collected fees (only callable by treasury)
-function withdrawFees(Currency token, uint256 amount) external
-```
+#### Fee Operations
+- `getAvailableFees(Currency)` - View accumulated fees for a token
+- `_afterSwap()` - Internal hook function that collects fees
 
-#### Hook Implementations
-```solidity
-// Called when a pool is initialized
-function _afterInitialize(...) internal override
-
-// Called before a swap occurs
-function beforeSwap(...) external override view
-
-// Called after a swap occurs
-function _afterSwap(...) internal override
-```
-
-### Events
-```solidity
-event TreasuryFeeCollected(PoolKey key, address token, uint256 amount);
-event TreasuryAddressChanged(address oldTreasury, address newTreasury);
-event TreasuryFeeRateChanged(uint24 oldRate, uint24 newRate);
 ```
 
 ## Usage
