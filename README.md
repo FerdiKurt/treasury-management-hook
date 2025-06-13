@@ -17,21 +17,33 @@ A treasury management hook implementation for Uniswap V4 that automatically coll
 
 The Treasury Management Hook is a Uniswap V4 hook that automatically collects configurable fees on swaps and manages treasury operations. It provides a decentralized mechanism for protocol revenue generation with treasury management capabilities.
 
+### Key Capabilities
 
-### Core Functionality
-- **Custom Fee Collection**: Charges additional fees on swaps (configurable in basis points)
-- **Automatic Treasury Distribution**: Fees are automatically sent to the treasury address
-- **Pool Management**: Track which pools use this hook
-- **Fee Withdrawal**: Treasury can withdraw accumulated fees
+- **Automated Fee Collection**: Collects fees on every swap based on configurable rates
+- **Treasury Management**: Management of collected fees with proper access controls
+- **Pool-Specific Configuration**: Per-pool fee management and configuration
+- **Flexible Fee Rates**: Configurable fee rates from 0% to 10% (0-1000 basis points)
+- **Secure Withdrawals**: Treasury-only withdrawal mechanism with proper validations
 
-### Administrative Functions
-- **Update Treasury Address**: Change where fees are sent
-- **Update Fee Rate**: Modify the fee percentage (maximum 10%)
-- **Access Control**: Only the treasury address can update settings
+## ✨ Features
 
-## Smart Contract Details
+### Core Features
 
-### Constructor Parameters
+- **Configurable Fee Rates**: Set fee rates from 0.01% to 10% (1-1000 basis points)
+- **Automated Collection**: Fees automatically collected on each swap
+- **Multi-Token Support**: Handles fees for any ERC20 token pair
+- **Treasury Controls**: Only treasury address can withdraw fees and change settings
+- **Pool Management**: Enable/disable hook for specific pools
+- **Fee Accumulation**: Efficient accumulation of fees over time
+- **Event Emission**: Event logging for transparency
+
+### Security Features
+
+- 🔒 **Access Control**: Treasury-only functions with proper validation
+- 🔒 **Rate Limits**: Maximum fee rate capped at 10%
+- 🔒 **Input Validation**: Input validation and error handling
+- 🔒 **Reentrancy Safety**: Protected against reentrancy attacks
+
 ```solidity
 constructor(
     IPoolManager _poolManager,    // Uniswap V4 Pool Manager address
