@@ -111,72 +111,53 @@ uniswap-v4-core = "^0.0.1"
 uniswap-v4-periphery = "^0.0.1"
 ```
 
+## 📖 Usage
+
+### Deployment
+
 ```solidity
+// Deploy the hook
+TestTreasuryManagementHook hook = new TestTreasuryManagementHook(
+    IPoolManager(poolManagerAddress),
+    treasuryAddress,
+    100  // 1% fee rate (100 basis points)
+);
+
+// Enable for a specific pool
 PoolKey memory poolKey = PoolKey({
-    currency0: Currency.wrap(address(token0)),
-    currency1: Currency.wrap(address(token1)),
-    fee: 3000,                // 0.3% standard pool fee
+    currency0: Currency.wrap(token0Address),
+    currency1: Currency.wrap(token1Address),
+    fee: 3000,
     tickSpacing: 60,
     hooks: IHooks(address(hook))
 });
 
-poolManager.initialize(poolKey, startingPrice);
+hook.setPoolManaged(poolKey, true);
 ```
 
-### 3. Collect Fees
-Fees are automatically collected on each swap. The treasury can withdraw accumulated fees using:
+### Fee Management
+
 ```solidity
-hook.withdrawFees(Currency.wrap(address(token)), amount);
+// Update fee rate (treasury only)
+hook.setTreasuryFeeRate(250); // 2.5%
+
+// Check accumulated fees
+uint256 fees = hook.getAvailableFees(Currency.wrap(tokenAddress));
+
+// Withdraw fees (treasury only)
+hook.withdrawFees(Currency.wrap(tokenAddress), amount);
 ```
 
-## Fee Calculation
+### Treasury Operations
 
-Fees are calculated as a percentage of the input token in a swap:
-
-- For token0 → token1 swaps: Fee is charged on token0
-- For token1 → token0 swaps: Fee is charged on token1
-- Fee rate is specified in basis points (100 basis points = 1%)
-
-Example:
-- Fee rate: 50 basis points (0.5%)
-- Swap: 1000 USDC → ETH
-- Treasury fee: 5 USDC (0.5% of 1000)
-
-## Security Considerations
-
-### Access Control
-- Only the treasury address can update treasury settings
-- Only the treasury address can withdraw fees
-- Maximum fee rate is capped at 10% (1000 basis points)
-
-### Pool Management
-- Pools are automatically registered when initialized with this hook
-- Unregistered pools won't have fees collected
-
-### Fee Collection
-- Fees are calculated based on the actual swap amounts
-- Zero fees are not emitted as events
-- Fees are stored in the pool manager and withdrawn explicitly
-
-## Gas Considerations
-
-- Additional gas cost for each swap due to custom fee calculation
-- Minimal storage usage with bitpacked pool tracking
-
-## Integration Examples
-
-### With Protocols
 ```solidity
-// Example: Integration with a DeFi protocol
-contract ProtocolTreasury {
-    TreasuryManagementHook public treasuryHook;
-    
-    function collectProtocolFees() external {
-        // Collect fees for all managed tokens
-        treasuryHook.withdrawFees(Currency.wrap(USDC), usdcBalance);
-        treasuryHook.withdrawFees(Currency.wrap(WETH), wethBalance);
-    }
-}
+// Update treasury address (current treasury only)
+hook.setTreasury(newTreasuryAddress);
+
+// Withdraw all fees for a token
+hook.withdrawFees(Currency.wrap(tokenAddress), 0);
+```
+
 ```
 
 ### With DAOs
