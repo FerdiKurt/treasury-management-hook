@@ -1,17 +1,22 @@
 # Treasury Management Hook for Uniswap V4
 
-A custom hook for Uniswap V4 that implements treasury management features, enabling pools to collect protocol fees and automatically distribute them to a designated treasury address.
+A treasury management hook implementation for Uniswap V4 that automatically collects fees on swaps and manages treasury operations.
 
-## Overview
+## 📋 Table of Contents
 
-The Treasury Management Hook extends Uniswap V4 pools with the ability to:
-- Collect additional fees on token swaps (beyond standard pool swap fees)
-- Send collected fees directly to a designated treasury address
-- Support configurable fee rates with a maximum cap of 10%
-- Enable treasury management (change treasury address and fee rates)
-- Track which pools are managed by the hook
+- [Overview](#overview)
+- [Features](#features)
+- [Contract Architecture](#contract-architecture)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Testing](#testing)
+- [Security Considerations](#security-considerations)
+- [License](#license)
 
-## Features
+## 🔍 Overview
+
+The Treasury Management Hook is a Uniswap V4 hook that automatically collects configurable fees on swaps and manages treasury operations. It provides a decentralized mechanism for protocol revenue generation with treasury management capabilities.
+
 
 ### Core Functionality
 - **Custom Fee Collection**: Charges additional fees on swaps (configurable in basis points)
