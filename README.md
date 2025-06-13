@@ -283,3 +283,27 @@ testFuzz_SetTreasuryFeeRate()
 testFuzz_FeeCalculation()
 testFuzz_WithdrawFees()
 ```
+
+## 📄 License
+
+SPDX-License-Identifier: UNLICENSED
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## 📞 Support
+
+For questions, issues, or contributions:
+
+- Create an issue in the repository
+- Review the test suite for usage examples
+- Check the contract documentation
+
+---
+
+**⚠️ Disclaimer**: This code is for educational and testing purposes. Conduct thorough audits before using in production environments.
