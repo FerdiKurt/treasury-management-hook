@@ -158,9 +158,98 @@ hook.setTreasury(newTreasuryAddress);
 hook.withdrawFees(Currency.wrap(tokenAddress), 0);
 ```
 
+## 🧪 Testing
+
+### Test Structure
+
+The project includes extensive tests covering all aspects of the hook:
+
+```
+test/
+├── TreasuryManagementHook.t.sol    # Main test suite
+└── TreasuryHookTest   # Test contract
+└── AdvancedTreasuryHookTest   # Complex test scenarios
 ```
 
-### With DAOs
+### Test Categories
+
+#### Constructor Tests
+- Valid deployment parameters
+- Invalid treasury address rejection
+- Fee rate validation
+
+#### Treasury Management Tests
+- Treasury address updates
+- Fee rate updates (0-1000 basis points)
+- Access control validation
+- Input validation
+
+#### Pool Management Tests
+- Pool registration after initialization
+- Manual pool management
+- Pool status queries
+
+#### Swap Hook Tests
+- Fee collection on swaps (both directions)
+- Zero fee rate handling
+- Unmanaged pool behavior
+- Edge cases and error conditions
+
+#### Fee Withdrawal Tests
+- Successful fee withdrawals
+- Partial and full withdrawals
+- Access control validation
+- Insufficient fees handling
+
+#### Integration Tests
+- Complete workflow testing
+- Multiple token fee handling
+- Fee accumulation over time
+- Treasury changes during operation
+
+#### Stress Tests
+- Multiple fee rate changes
+- High-frequency operations
+- Large-scale fee accumulation
+- System resilience validation
+
+#### Security Tests
+- Reentrancy protection
+- Unauthorized access prevention
+- Parameter boundary testing
+
+#### Gas Optimization Tests
+- Gas usage measurement
+- Performance optimization validation
+- Different scenario comparisons
+
+#### Fuzz Tests
+- Property-based testing
+- Random input validation
+- Edge case discovery
+
+### Running Tests
+
+```bash
+# Run all tests
+forge test
+
+# Run specific test file
+forge test --match-path test/TreasuryManagementHook.t.sol
+
+# Run tests with verbosity
+forge test -vvv
+
+# Run specific test function
+forge test --match-test test_AfterSwap_ZeroForOne_CollectsFees
+
+# Run tests with gas reporting
+forge test --gas-report
+
+# Generate coverage report
+forge coverage
+```
+
 ```solidity
 // Example: DAO governance integration
 contract DAOTreasury {
