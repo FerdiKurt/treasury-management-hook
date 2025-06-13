@@ -76,20 +76,41 @@ contract TestTreasuryManagementHook is BaseHook {
 - `getAvailableFees(Currency)` - View accumulated fees for a token
 - `_afterSwap()` - Internal hook function that collects fees
 
+## 🚀 Installation
+
+### Prerequisites
+
+- [Foundry](https://getfoundry.sh/)
+- [Node.js](https://nodejs.org/) (v16+)
+- [Git](https://git-scm.com/)
+
+### Setup
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd treasury-management-hook
+
+# Install dependencies
+forge install
+
+# Build contracts
+forge build
+
+# Run tests
+forge test
 ```
 
-## Usage
+### Dependencies
 
-### 1. Deploy the Hook
-```solidity
-TreasuryManagementHook hook = new TreasuryManagementHook(
-    poolManager,              // Uniswap V4 Pool Manager
-    treasuryAddress,          // Your treasury address
-    50                        // 0.5% fee rate (50 basis points)
-);
+```toml
+[dependencies]
+forge-std = "^1.0.0"
+openzeppelin-contracts = "^4.9.0"
+uniswap-v4-core = "^0.0.1"
+uniswap-v4-periphery = "^0.0.1"
 ```
 
-### 2. Create a Pool with the Hook
 ```solidity
 PoolKey memory poolKey = PoolKey({
     currency0: Currency.wrap(address(token0)),
